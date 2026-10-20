@@ -1,0 +1,64 @@
+.section {
+  margin-top: 20px;
+}
+
+.sectionTitle {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.docs {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.docs li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius-area);
+}
+
+.docIcon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.docName {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.docName small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.docSize {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.empty {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 6px;
+}

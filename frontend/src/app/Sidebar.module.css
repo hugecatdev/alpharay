@@ -1,0 +1,129 @@
+.sidebar {
+  position: sticky;
+  top: var(--header-h);
+  height: calc(100vh - var(--header-h));
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 14px 18px;
+  background: var(--chrome);
+  overflow: hidden;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 0 14px;
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  position: relative;
+}
+
+.item:hover {
+  background: var(--chrome-hover);
+  color: var(--text);
+}
+
+.active,
+.active:hover {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.accent:not(.active) {
+  color: var(--text);
+}
+
+.accent:not(.active) .icon {
+  color: var(--red);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.2s;
+}
+
+.badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  background: var(--red);
+  color: #fff;
+}
+
+.bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 12px;
+}
+
+.utility {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 38px;
+  padding: 0 13px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.utility:hover {
+  background: var(--chrome-hover);
+  color: var(--text);
+}
+
+.collapsed {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.collapsed .item,
+.collapsed .utility {
+  justify-content: center;
+  padding: 0;
+}
+
+.collapsed .label {
+  display: none;
+}
+
+.collapsed .badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  font-size: 12px;
+  padding: 0 4px;
+}

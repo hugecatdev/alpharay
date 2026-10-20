@@ -1,0 +1,168 @@
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 10px;
+  min-width: 0;
+  --tone: var(--violet);
+  --tone-soft: var(--violet-soft);
+}
+
+.tone-warning {
+  --tone: var(--amber);
+  --tone-soft: var(--amber-soft);
+}
+
+.tone-info {
+  --tone: var(--blue);
+  --tone-soft: var(--blue-soft);
+}
+
+.tone-accent {
+  --tone: var(--red);
+  --tone-soft: var(--red-soft);
+}
+
+.tone-success {
+  --tone: var(--green-strong);
+  --tone-soft: var(--green-soft);
+}
+
+.connector {
+  position: absolute;
+  top: 19px;
+  left: 48px;
+  right: 8px;
+  height: 2px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.connectorDone {
+  background: var(--green);
+}
+
+.connectorActive {
+  background: linear-gradient(90deg, var(--green) 0%, var(--green) 40%, var(--line) 40%);
+  background-size: 250% 100%;
+  animation: flow 1.6s linear infinite;
+}
+
+@keyframes flow {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+.connectorCut {
+  background: repeating-linear-gradient(90deg, var(--line-strong) 0 4px, transparent 4px 9px);
+  opacity: 0.6;
+}
+
+.marker {
+  position: relative;
+  z-index: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  color: var(--faint);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.done .marker {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.current .marker {
+  border-color: var(--tone);
+  background: var(--tone-soft);
+}
+
+.current .marker::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--tone);
+  opacity: 0;
+  animation: ring 1.8s var(--ease-out) infinite;
+}
+
+@keyframes ring {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+.core {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+.failed .marker {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.cut .marker {
+  border-style: dashed;
+  opacity: 0.5;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.done .title {
+  color: var(--text);
+}
+
+.current .title {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.failed .title {
+  color: var(--negative);
+  font-weight: 800;
+}
+
+.cut .title {
+  color: var(--faint);
+  text-decoration: line-through;
+}
+

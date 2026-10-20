@@ -1,0 +1,134 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.head h4 {
+  font-size: 18px;
+}
+
+.head p {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 16px 18px 18px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  text-align: left;
+  box-shadow: inset 0 0 0 2px transparent;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.2s var(--ease-out);
+  min-width: 0;
+}
+
+.option:hover {
+  background: var(--surface-3);
+  transform: translateY(-1px);
+}
+
+.selected,
+.selected:hover {
+  background: var(--red-soft);
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+
+.optionTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.optionTop strong {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--positive-ink);
+  background: var(--positive-fill);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.payment {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.payment small {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.row b {
+  font-size: 16px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.row b.low {
+  color: var(--green-strong);
+}
+
+.row b.medium {
+  color: var(--amber);
+}
+
+.row b.high {
+  color: var(--negative);
+}
+
+@media (max-width: 1280px) {
+  .option {
+    padding: 14px;
+  }
+
+  .payment {
+    font-size: 24px;
+  }
+}

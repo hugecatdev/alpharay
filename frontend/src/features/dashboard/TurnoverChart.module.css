@@ -1,0 +1,151 @@
+.root {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.svg {
+  display: block;
+  overflow: visible;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.grid {
+  stroke: var(--line);
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+
+.axis {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.tickY,
+.tickX {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.inflow {
+  fill: none;
+  stroke: var(--red);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.outflow {
+  fill: none;
+  stroke: var(--violet);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.guide {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.dotIn {
+  fill: var(--red);
+  stroke: var(--surface);
+  stroke-width: 2.5;
+}
+
+.dotOut {
+  fill: var(--violet);
+  stroke: var(--surface);
+  stroke-width: 2.5;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tooltip strong {
+  color: var(--text);
+  font-size: 14px;
+  text-transform: capitalize;
+}
+
+.tooltip span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tooltip b {
+  margin-left: auto;
+  color: var(--text);
+}
+
+.free {
+  border-top: 1px solid var(--line);
+  padding-top: 5px;
+  margin-top: 2px;
+}
+
+.free b {
+  color: var(--green-strong);
+}
+
+.keyIn,
+.keyOut {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.keyIn {
+  background: var(--red);
+}
+
+.keyOut {
+  background: var(--violet);
+}
+
+.legend {
+  display: flex;
+  gap: 18px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  height: 180px;
+  color: var(--muted);
+  font-size: 14px;
+  background: var(--surface-2);
+
+  border-radius: var(--radius-area);
+}

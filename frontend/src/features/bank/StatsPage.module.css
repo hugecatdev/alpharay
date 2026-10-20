@@ -1,0 +1,96 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.funnelRow {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 60px;
+  align-items: center;
+  gap: 14px;
+}
+
+.funnelLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.funnelTrack {
+  height: 22px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.funnelBar {
+  display: block;
+  height: 100%;
+  width: var(--width);
+  border-radius: 7px;
+  animation: grow 0.7s var(--ease-out) both;
+}
+
+@keyframes grow {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--width);
+  }
+}
+
+.funnelCount {
+  text-align: right;
+  font-size: 16px;
+}
+
+.tone-neutral {
+  background: var(--line-strong);
+}
+
+.tone-info {
+  background: var(--blue);
+}
+
+.tone-progress {
+  background: var(--violet);
+}
+
+.tone-success {
+  background: var(--green);
+}
+
+.tone-warning {
+  background: var(--amber);
+}
+
+.tone-danger {
+  background: var(--red);
+}
+
+.tone-accent {
+  background: color-mix(in srgb, var(--red) 55%, var(--violet));
+}
+
+@media (max-width: 1280px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,0 +1,151 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s var(--ease-out), box-shadow 0.2s;
+  border: 1px solid transparent;
+  text-decoration: none;
+  user-select: none;
+}
+
+.button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.button:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.button:disabled {
+  opacity: 0.5;
+}
+
+.label {
+  display: inline-block;
+}
+
+.sm {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+.md {
+  min-height: 48px;
+  padding: 12px 20px;
+  font-size: 15px;
+}
+
+.lg {
+  min-height: 56px;
+  padding: 15px 26px;
+  font-size: 16px;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.block {
+  width: 100%;
+}
+
+.primary {
+  background: var(--red);
+  color: #fff;
+}
+
+.primary:not(:disabled):hover {
+  background: var(--red-hover);
+}
+
+.secondary {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.secondary:not(:disabled):hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--text);
+}
+
+.ghost:not(:disabled):hover {
+  background: var(--surface-3);
+}
+
+.danger {
+  background: var(--surface);
+  color: var(--negative);
+  border-color: var(--red-line);
+}
+
+.danger:not(:disabled):hover {
+  background: var(--red-soft);
+}
+
+.link {
+  background: transparent;
+  color: var(--text);
+  padding-left: 0;
+  padding-right: 0;
+  min-height: auto;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line-strong);
+  justify-content: space-between;
+}
+
+.link:not(:disabled):hover {
+  color: var(--red);
+  border-bottom-color: var(--red);
+  transform: none;
+}
+
+.link svg {
+  color: var(--red);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: var(--muted);
+  position: relative;
+  transition: background 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.iconButton:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.iconActive {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

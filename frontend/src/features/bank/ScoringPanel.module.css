@@ -1,0 +1,214 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card header {
+  margin-bottom: 0;
+}
+
+.scoreRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.score strong {
+  font-size: 52px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.05em;
+}
+
+.score span {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.grade {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.gradeBadge {
+  font-size: 14px;
+  padding: 5px 12px;
+}
+
+.stops {
+  background: var(--red-soft);
+  padding: 12px 14px;
+  color: var(--negative);
+  border-radius: var(--radius-area);
+}
+
+.stops strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.stops ul {
+  margin: 8px 0 0;
+  padding-left: 22px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.factors {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+
+.factor {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.factor:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.factorHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.factorName {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.factorPoints {
+  font-size: 14px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.good {
+  color: var(--green-strong);
+}
+
+.mid {
+  color: var(--amber);
+}
+
+.bad {
+  color: var(--negative);
+}
+
+.factorBar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.factorFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s var(--ease-out);
+}
+
+.fill-good {
+  background: var(--green);
+}
+
+.fill-mid {
+  background: var(--amber);
+}
+
+.fill-bad {
+  background: var(--red);
+}
+
+.factorMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.factorValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.factorComment {
+  color: var(--muted);
+}
+
+.recommendation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--violet);
+  flex-shrink: 0;
+}
+
+.recTitles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.recEyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.recTerms {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.recReasons {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}

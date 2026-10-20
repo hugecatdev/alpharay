@@ -1,0 +1,128 @@
+.ratios {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ratios > div {
+  padding: 4px 0 4px 18px;
+  border-left: 1px solid var(--line);
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 12px;
+  margin: 0 -12px;
+  border-bottom: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.external {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.danger {
+  background: var(--red-soft);
+  border-bottom-color: transparent;
+}
+
+.danger .label,
+.danger .external {
+  color: var(--negative);
+}
+
+.warning {
+  background: var(--amber-soft);
+  border-bottom-color: transparent;
+}
+
+.warning .label,
+.warning .external {
+  color: var(--amber);
+}
+
+.discBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--negative);
+  background: var(--red-soft);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.discrepancies {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.discHead,
+.discRow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 0.8fr;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  align-items: center;
+}
+
+.discHead {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.discLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.discRow.danger .discLabel,
+.discRow.danger strong {
+  color: var(--negative);
+}
+
+.discRow.warning .discLabel,
+.discRow.warning strong {
+  color: var(--amber);
+}

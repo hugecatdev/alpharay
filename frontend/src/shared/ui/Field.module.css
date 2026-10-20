@@ -1,0 +1,161 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.label {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.error {
+  font-size: 13px;
+  color: var(--negative);
+  line-height: 1.5;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 0 16px;
+  min-height: 52px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.control:focus-within {
+  border-color: var(--text);
+}
+
+.controlInvalid,
+.invalid .control {
+  border-color: var(--negative);
+}
+
+.readOnly {
+  background: var(--surface-2);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 12px 0;
+  color: var(--text);
+}
+
+.input::placeholder {
+  color: var(--faint);
+  font-weight: 500;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 84px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.selectControl {
+  padding-right: 6px;
+}
+
+.select {
+  appearance: auto;
+  cursor: pointer;
+}
+
+.suffix {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.checkbox {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.checkboxDisabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.checkboxInput {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.checkboxBox {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  color: transparent;
+  margin-top: 1px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.checkboxInput:checked + .checkboxBox {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+
+.checkboxInput:focus-visible + .checkboxBox {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.checkboxInvalid .checkboxBox {
+  border-color: var(--negative);
+}
+
+.checkboxText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checkboxDescription {
+  font-size: 13px;
+  color: var(--muted);
+}

@@ -1,0 +1,19 @@
+.env
+.env.local
+*.local
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+dist/
+uploads/
+.claude/settings.local.json
+test-results/
+playwright-report/
+e2e-screens/
+backups/
+.DS_Store
+AlphaRay.html
+AlphaRay (2).html
+AlphaRay Mobile.html
+*.pdf

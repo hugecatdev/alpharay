@@ -1,0 +1,59 @@
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--surface-2);
+  border-radius: var(--radius-area);
+}
+
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.index {
+  color: var(--faint);
+  width: 40px;
+}
+
+.nextRow td {
+  background: var(--red-soft);
+  font-weight: 700;
+}
+
+.totalRow td {
+  font-weight: 800;
+  background: var(--surface-2);
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.progressHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.progressHead b {
+  color: var(--text);
+}

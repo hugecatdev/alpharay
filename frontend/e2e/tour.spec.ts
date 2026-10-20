@@ -1,0 +1,28 @@
+import { test } from '@playwright/test'
+import { login, resetDemo, shot } from './helpers'
+
+test('screen tour', async ({ page }) => {
+  await resetDemo(page)
+  await shot(page, '01-login')
+  await login(page, 'client1@demo.local')
+  await page.waitForLoadState('networkidle')
+  await shot(page, '02-dashboard')
+  await page.goto('/app/company')
+  await page.waitForLoadState('networkidle')
+  await shot(page, '04-company')
+  await page.goto('/app/applications')
+  await page.waitForLoadState('networkidle')
+  await shot(page, '05-applications')
+  await page.goto('/app/applications/new')
+  await page.waitForLoadState('networkidle')
+  await shot(page, '06-wizard-product')
+  await page.goto('/app/notifications')
+  await page.waitForLoadState('networkidle')
+  await shot(page, '08-notifications')
+  await page.goto('/app/applications')
+  await page.getByText('Кредит на оборудование').first().click()
+  await page.waitForURL(/step=/)
+  await page.goto(page.url().replace(/step=[a-z]+/, 'step=amount'))
+  await page.waitForLoadState('networkidle')
+  await shot(page, '09-wizard-amount')
+})

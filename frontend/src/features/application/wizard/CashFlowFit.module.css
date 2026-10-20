@@ -1,0 +1,116 @@
+.card {
+  padding: 24px 0 4px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.titles h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.caption {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.chart {
+  position: relative;
+  height: 150px;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.bars {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.column {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.bar {
+  display: block;
+  width: 100%;
+  border-radius: 5px 5px 2px 2px;
+  transition: height 0.45s var(--ease-out), background 0.3s;
+}
+
+.good {
+  background: var(--positive-fill);
+}
+
+.bad {
+  background: var(--red);
+}
+
+.payment {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  border-top: 2px dashed var(--text);
+  transition: bottom 0.45s var(--ease-out);
+  pointer-events: none;
+}
+
+.payment span {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface);
+  padding: 1px 6px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.months {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.months span {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+}
+
+.summary {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.empty {
+  font-size: 14px;
+  color: var(--muted);
+}

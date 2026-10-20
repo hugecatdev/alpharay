@@ -1,0 +1,139 @@
+.card {
+  min-width: 0;
+  animation: fade-up 0.35s var(--ease-out) both;
+}
+
+.default {
+  border-top: 1px solid var(--line);
+  padding: 30px 0 28px;
+}
+
+.railContainer {
+  container-type: inline-size;
+}
+
+.frame,
+.body {
+  display: contents;
+}
+
+@container (min-width: 860px) {
+  .rail {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    column-gap: 56px;
+    align-items: start;
+  }
+
+  .rail > .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 0;
+  }
+
+  .rail > .body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+}
+
+.default.pad-none {
+  padding: 0;
+}
+
+.muted,
+.accent,
+.dark {
+  border-radius: var(--radius-card);
+}
+
+.muted.pad-sm,
+.accent.pad-sm,
+.dark.pad-sm {
+  padding: 18px 20px;
+}
+
+.muted.pad-md,
+.accent.pad-md,
+.dark.pad-md {
+  padding: 26px 28px;
+}
+
+.muted.pad-lg,
+.accent.pad-lg,
+.dark.pad-lg {
+  padding: 34px 36px;
+}
+
+.muted {
+  background: var(--surface-2);
+}
+
+.accent {
+  background: var(--red-soft);
+}
+
+.dark {
+  background: #121615;
+  color: #f1f2ec;
+}
+
+.interactive {
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s var(--ease-out);
+}
+
+.interactive:hover .title {
+  color: var(--red);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  transition: color 0.2s;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

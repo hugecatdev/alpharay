@@ -1,0 +1,36 @@
+.tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--muted);
+  background: var(--surface-3);
+}
+
+.info {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.progress {
+  color: var(--violet);
+  background: var(--violet-soft);
+}
+
+.success {
+  color: var(--green-strong);
+  background: var(--green-soft);
+}
+
+.warning {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.danger,
+.accent {
+  color: var(--red);
+  background: var(--red-soft);
+}

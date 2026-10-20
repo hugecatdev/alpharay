@@ -1,0 +1,152 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: -8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  box-shadow: var(--card-shadow);
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.chip b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.statusFilter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 280px;
+}
+
+.filterLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sort {
+  margin-left: auto;
+}
+
+.sortHead {
+  font: inherit;
+  color: inherit;
+  font-weight: 700;
+}
+
+.sortHead:hover {
+  color: var(--text);
+}
+
+.row {
+  cursor: pointer;
+}
+
+.row:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: -3px;
+}
+
+.number {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.company {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 240px;
+}
+
+.company strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.company span {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.product {
+  color: var(--muted);
+  white-space: normal;
+  min-width: 140px;
+}
+
+.amount {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.amount span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.grade {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.dash {
+  color: var(--faint);
+}
+
+.waiting {
+  color: var(--muted);
+}
+
+.assignee {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.mine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--green-strong);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emptyWrap {
+  border-top: 1px solid var(--line);
+}

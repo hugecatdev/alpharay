@@ -1,0 +1,18 @@
+export const queryKeys = {
+  me: ['me'] as const,
+  config: ['config'] as const,
+  company: ['company'] as const,
+  insights: ['company', 'insights'] as const,
+  applications: ['applications'] as const,
+  application: (id: string) => ['applications', id] as const,
+  events: (id: string) => ['applications', id, 'events'] as const,
+  contract: (id: string) => ['applications', id, 'contract'] as const,
+  schedule: (id: string) => ['applications', id, 'schedule'] as const,
+  notifications: ['notifications'] as const,
+  notificationsList: (unread: boolean) => ['notifications', { unread }] as const,
+  assistantSession: (id: string) => ['assistant', id] as const,
+  bankQueue: (status: string, assigned: string) => ['bank', 'queue', status, assigned] as const,
+  bankApplication: (id: string) => ['bank', 'applications', id] as const,
+  bankEvents: (id: string) => ['bank', 'applications', id, 'events'] as const,
+  bankStats: ['bank', 'stats'] as const,
+}

@@ -1,0 +1,132 @@
+.toolbar {
+  margin-bottom: 18px;
+}
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.empty {
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1.6fr) minmax(130px, 0.9fr) minmax(170px, 1fr) 20px;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 14px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s;
+  animation: fade-up 0.3s var(--ease-out) both;
+  border-radius: var(--radius-area);
+  margin: 0 -14px;
+}
+
+.row:hover {
+  background: var(--surface-2);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.number {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.product {
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.next {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.money {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.money strong {
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+.money span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.updated {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.chevron {
+  color: var(--faint);
+  transition: color 0.2s, transform 0.2s;
+}
+
+.row:hover .chevron {
+  color: var(--red);
+  transform: translateX(2px);
+}
+
+.list > li {
+  position: relative;
+}
+
+.list > li + li::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 62px;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

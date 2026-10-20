@@ -1,0 +1,123 @@
+.root {
+  min-width: 0;
+  --accent: var(--red);
+}
+
+.green {
+  --accent: var(--green);
+}
+
+.labelRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  min-height: 22px;
+}
+
+.label {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  padding: 12px 16px 11px;
+  background: var(--surface);
+  transition: border-color 0.2s;
+}
+
+.line:focus-within {
+  border-color: var(--text);
+}
+
+.invalid .line {
+  border-color: var(--negative);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.suffix {
+  font-size: 16px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.range {
+  display: block;
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  border-radius: 0 0 10px 10px;
+  background: linear-gradient(to right, var(--accent) var(--progress), var(--line) var(--progress));
+}
+
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--accent), 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: transform 0.15s;
+}
+
+.range::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.range:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 9px;
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--negative);
+}

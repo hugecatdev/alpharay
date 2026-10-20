@@ -1,0 +1,132 @@
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.intro p {
+  color: var(--muted);
+  max-width: 560px;
+}
+
+.intro > button {
+  flex-shrink: 0;
+}
+
+.compare {
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: var(--radius-area);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(0, 1.1fr) 24px minmax(0, 1.4fr);
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.headRow {
+  background: var(--surface-2);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.offeredHead {
+  color: var(--red);
+}
+
+.label {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.requested {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.changed .requested {
+  text-decoration: line-through;
+  text-decoration-color: var(--faint);
+}
+
+.arrow {
+  color: var(--faint);
+  display: grid;
+  place-items: center;
+}
+
+.offered {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.offered strong {
+  font-size: 16px;
+}
+
+.changed {
+  background: color-mix(in srgb, var(--red-soft) 55%, transparent);
+}
+
+.changed .arrow {
+  color: var(--red);
+}
+
+.emphasis .offered strong {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.delta {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.same {
+  font-size: 13px;
+  color: var(--faint);
+}
+
+.validity {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--red-soft);
+  font-weight: 600;
+  border-radius: var(--radius-area);
+}

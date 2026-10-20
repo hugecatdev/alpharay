@@ -1,0 +1,35 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 0 4px;
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.toggle:hover {
+  color: var(--text);
+}
+
+.chevron {
+  transition: transform 0.25s var(--ease-out);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.table {
+  max-height: 320px;
+  overflow: auto;
+  margin-top: 10px;
+  border-radius: 12px;
+}

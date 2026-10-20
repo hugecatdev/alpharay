@@ -1,0 +1,44 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 48px 24px;
+  background: var(--page);
+}
+
+.column {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+
+.card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.head h1 {
+  font-size: 32px;
+}
+
+.head p {
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.footer {
+  font-size: 14px;
+  color: var(--faint);
+}

@@ -1,0 +1,17 @@
+.fade {
+  display: inline-block;
+  animation: value-in 0.32s var(--ease-out) both;
+}
+
+@keyframes value-in {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}

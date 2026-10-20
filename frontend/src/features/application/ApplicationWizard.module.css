@@ -1,0 +1,14 @@
+.wizard {
+  display: flex;
+  flex-direction: column;
+}
+
+.stepper {
+  margin-bottom: 48px;
+}
+
+.wizard .card {
+  border-top: 0;
+  padding-top: 4px;
+  padding-bottom: 0;
+}

@@ -1,0 +1,111 @@
+.quiet {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.quiet strong {
+  display: block;
+  font-size: 17px;
+  margin-bottom: 2px;
+}
+
+.quiet p {
+  color: var(--muted);
+  max-width: 560px;
+}
+
+.quietIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--surface-3);
+  display: grid;
+  place-items: center;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.approved {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.approvedHero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 22px;
+  background: var(--green-soft);
+  border-radius: var(--radius-area);
+}
+
+.approvedLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--green-strong);
+}
+
+.approvedValue {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.approvedSub {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.rejected {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.lead {
+  color: var(--muted);
+  max-width: 620px;
+}
+
+.reasons {
+  padding: 16px 18px;
+  background: var(--red-soft);
+  border-radius: var(--radius-area);
+}
+
+.reasonsTitle {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--negative);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.reasons ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.disbursed {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}

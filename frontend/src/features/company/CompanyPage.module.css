@@ -1,0 +1,245 @@
+.page {
+  display: flex;
+  flex-direction: column;
+}
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px 40px;
+  flex-wrap: wrap;
+  margin-bottom: 36px;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--violet-soft);
+  color: var(--violet);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.personText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.personText strong {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.personText span {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.figures {
+  display: flex;
+  margin: 0;
+}
+
+.figures > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 24px;
+}
+
+.figures > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.figures > div:last-child {
+  padding-right: 0;
+}
+
+.figures dt,
+.facts dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.figures dd {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px 32px;
+  margin: 0;
+}
+
+.facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.facts dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--green-strong);
+}
+
+.debt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.debt span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.debt strong {
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rows > li {
+  position: relative;
+}
+
+.rows > li + li::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 58px;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+  pointer-events: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: calc(100% + 24px);
+  margin: 0 -12px;
+  padding: 14px 12px;
+  text-align: left;
+  transition: background 0.2s;
+  border-radius: var(--radius-area);
+}
+
+button.row:hover {
+  background: var(--surface-2);
+}
+
+.loanTile {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--green-strong);
+  background: var(--green-soft);
+}
+
+.rowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rowMain strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.rowMain span {
+  font-size: 14px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 150px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.rowSide b {
+  color: var(--text);
+}
+
+.rowDate {
+  font-size: 13px;
+  color: var(--faint);
+}
+
+.chevron {
+  color: var(--faint);
+  flex-shrink: 0;
+}

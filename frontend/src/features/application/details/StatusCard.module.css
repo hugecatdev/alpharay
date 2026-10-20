@@ -1,0 +1,133 @@
+.card {
+  --tone: var(--muted);
+  --tone-soft: var(--surface-3);
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 20px 0 40px;
+}
+
+.progress {
+  --tone: var(--violet);
+  --tone-soft: var(--violet-soft);
+}
+
+.info {
+  --tone: var(--blue);
+  --tone-soft: var(--blue-soft);
+}
+
+.success {
+  --tone: var(--green-strong);
+  --tone-soft: var(--green-soft);
+}
+
+.warning {
+  --tone: var(--amber);
+  --tone-soft: var(--amber-soft);
+}
+
+.danger,
+.accent {
+  --tone: var(--red);
+  --tone-soft: var(--red-soft);
+}
+
+.icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--tone);
+  background: var(--tone-soft);
+}
+
+.spinning svg {
+  animation: spin 2.4s linear infinite;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.title {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.description {
+  color: var(--muted);
+  max-width: 640px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.chips:empty {
+  display: none;
+}
+
+.live,
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 999px;
+}
+
+.live {
+  background: var(--violet-soft);
+  color: var(--violet);
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--violet);
+  animation: live 1.2s ease-in-out infinite;
+}
+
+@keyframes live {
+  50% {
+    opacity: 0.2;
+    transform: scale(0.7);
+  }
+}
+
+.chip {
+  background: var(--surface-3);
+  color: var(--muted);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

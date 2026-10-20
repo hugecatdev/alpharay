@@ -1,0 +1,130 @@
+.warning {
+  --tone: var(--blue);
+  --tone-soft: var(--blue-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 6px 0;
+  padding: 30px 32px 28px;
+  background: var(--tone-soft);
+  border-radius: var(--radius-area);
+}
+
+.low {
+  --tone: var(--blue);
+  --tone-soft: var(--blue-soft);
+}
+
+.medium {
+  --tone: var(--amber);
+  --tone-soft: var(--amber-soft);
+}
+
+.high {
+  --tone: var(--negative);
+  --tone-soft: var(--red-soft);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--tone);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  max-width: 640px;
+}
+
+.lead {
+  font-size: 16px;
+  color: var(--muted);
+  max-width: 640px;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px 0;
+  margin-top: 8px;
+}
+
+.facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 20px;
+  min-width: 0;
+}
+
+.facts > div + div {
+  border-left: 1px solid color-mix(in srgb, var(--tone) 22%, transparent);
+  padding-left: 22px;
+}
+
+.facts strong {
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.facts span {
+  font-size: 14px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--text) 70%, transparent);
+}
+
+.good {
+  color: var(--green-strong);
+}
+
+.mid {
+  color: var(--amber);
+}
+
+.bad {
+  color: var(--negative);
+}
+
+.footnote {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  margin-top: 4px;
+}
+
+.warning .ask {
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 40%, transparent);
+}
+
+.warning .ask:hover {
+  border-color: var(--tone);
+}
+
+.warning .askChip {
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+  border-color: color-mix(in srgb, var(--tone) 30%, transparent);
+}
+
+.warning .askChip:hover {
+  border-color: var(--tone);
+}
