@@ -59,8 +59,7 @@ test('client1: заявка → одобрение → подписание → 
   await page.getByRole('link', { name: /Перейти к подписанию/ }).first().click()
   await expect(page).toHaveURL(/\/sign$/)
   await expect(page.locator('iframe[title="Текст кредитного договора"]')).toBeVisible()
-  await page.getByText('С условиями договора ознакомлен(а)').click()
-  await expect(page.getByLabel('С условиями договора ознакомлен(а)')).toBeChecked()
+  await page.getByLabel('С условиями договора ознакомлен(а)').check()
   await page.getByRole('button', { name: 'Подписать', exact: true }).click()
   await page.getByLabel('Код подтверждения').fill('1111')
   await page.getByRole('button', { name: 'Подтвердить' }).click()
@@ -91,6 +90,13 @@ test('client3 → андеррайтер: контрпредложение → �
   await shot(page, '22-counter-offer')
   await page.getByRole('button', { name: 'Принять предложение' }).click()
   await waitForStatus(page, 'Одобрено')
+})
+
+test('администратор банка входит в кабинет банка и видит очередь', async ({ page }) => {
+  await login(page, 'admin@bank.local')
+  await expect(page.getByRole('row', { name: /СтройМастер/ }).first()).toBeVisible()
+  await page.goto('/app')
+  await expect(page).toHaveURL(/\/bank/)
 })
 
 test('client4: отказ с причинами', async ({ page }) => {
@@ -133,7 +139,26 @@ test('оборудование без счёта блокирует шаг до�
   await shot(page, '50-documents-invoice-required')
 })
 
+async function assistantEnabled(page: Page): Promise<boolean> {
+  const response = await page.request.get('/api/config')
+  const config = (await response.json()) as { assistant_enabled: boolean }
+  return config.assistant_enabled
+}
+
+test('без ключа LLM Рэй скрыт, сценарий работает формами', async ({ page }) => {
+  test.skip(await assistantEnabled(page), 'на бэкенде задан ключ LLM')
+  await login(page, 'client1@demo.local')
+  await page.goto('/app/applications/new')
+  await page.getByRole('button', { name: /^Покрытие кассовых разрывов/ }).click()
+  await page.locator('[data-assist="product-OVERDRAFT"]').click()
+  await page.getByRole('button', { name: 'Перейти к сумме и сроку' }).click()
+  await expect(page.locator('[data-assist="risk-warning"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Спросить Рэя о рисках' })).toHaveCount(0)
+  await expect(page.getByRole('complementary', { name: 'Рэй — умный ассистент' })).toHaveCount(0)
+})
+
 test('ассистент объясняет экран и подсвечивает элемент', async ({ page }) => {
+  test.skip(!(await assistantEnabled(page)), 'ключ LLM не задан — Рэй скрыт')
   await login(page, 'client1@demo.local')
   await page.goto('/app/applications/new')
   await page.getByRole('button', { name: /^Покрытие кассовых разрывов/ }).click()
@@ -153,6 +178,25 @@ test('ассистент объясняет экран и подсвечивае
   await panel.getByLabel('Сообщение Рэю').press('Enter')
   await expect(panel.getByText('Рэй печатает')).toBeHidden({ timeout: 10_000 })
   await shot(page, '61-assistant-payment')
+})
+
+test('ассистент по просьбе подставляет сумму и срок в форму', async ({ page }) => {
+  test.skip(!(await assistantEnabled(page)), 'ключ LLM не задан — Рэй скрыт')
+  await login(page, 'client1@demo.local')
+  await page.goto('/app/applications/new')
+  await page.getByRole('button', { name: /^Пополнение оборотных средств/ }).click()
+  await page.locator('[data-assist="product-WORKING_CAPITAL"]').click()
+  await page.getByRole('button', { name: 'Перейти к сумме и сроку' }).click()
+  await expect(page).toHaveURL(/step=amount/)
+  const panel = page.getByRole('complementary', { name: 'Рэй — умный ассистент' })
+  await panel.getByLabel('Сообщение Рэю').fill('Поставь сумму 2 000 000 рублей и срок 36 месяцев')
+  await panel.getByLabel('Сообщение Рэю').press('Enter')
+  await expect(panel.getByText('Рэй печатает')).toBeHidden({ timeout: 25_000 })
+  await expect(panel.getByText(/Подставлено в форму: 2.000.000.₽ · 36 мес\./)).toBeVisible()
+  await expect(page.locator('[data-assist="amount"] input[inputmode="numeric"]')).toHaveValue(/^2\D?000\D?000$/)
+  await expect(page.locator('[data-assist="term"] input[inputmode="numeric"]')).toHaveValue('36')
+  await expect(panel.getByText(/WORKING_CAPITAL|EQUIPMENT|OVERDRAFT/)).toHaveCount(0)
+  await shot(page, '62-assistant-fill')
 })
 
 test('client6 без компании: онбординг по ИНН → заявка', async ({ page }) => {

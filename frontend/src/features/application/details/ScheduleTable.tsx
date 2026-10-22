@@ -28,6 +28,21 @@ function RepaymentProgress({ amount, balance, paidCount, total }: { amount: numb
 }
 
 export function ScheduleTable({ application }: { application: Application }) {
+  if (application.product.repayment === 'REVOLVING') {
+    return (
+      <div className={styles.block} data-assist="schedule">
+        <p className={styles.revolving}>
+          Лимит {formatMoney(application.offer?.amount ?? application.amount)} подключён к расчётному счёту. Графика платежей нет:
+          поступления на счёт сами гасят задолженность, каждый транш — не позже 60 дней, проценты — только за использованную
+          сумму.
+        </p>
+      </div>
+    )
+  }
+  return <AnnuitySchedule application={application} />
+}
+
+function AnnuitySchedule({ application }: { application: Application }) {
   const [expanded, setExpanded] = useState(false)
   const query = useQuery({
     queryKey: queryKeys.schedule(application.id),

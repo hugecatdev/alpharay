@@ -16,6 +16,7 @@ import styles from './Steps.module.css'
 const INN_PATTERN = /^(\d{10}|\d{12})$/
 
 function CompanyData({ company }: { company: CompanyLookup }) {
+  const lastYear = new Date().getFullYear() - 1
   const cells: { label: string; value: string; wide?: boolean }[] = [
     { label: 'ОГРН', value: company.ogrn },
     { label: 'ИНН', value: company.inn },
@@ -26,7 +27,7 @@ function CompanyData({ company }: { company: CompanyLookup }) {
     { label: 'Налоговый режим', value: taxSystemLabels[company.tax_system] },
     { label: 'Основной ОКВЭД', value: `${company.okved_main} — ${company.okved_name}`, wide: true },
     { label: 'Руководитель', value: company.head_name },
-    { label: 'Сотрудников', value: String(company.employees_count) },
+    { label: 'Среднесписочная численность', value: `${company.employees_count} чел. · ФНС, ${lastYear}` },
     { label: 'Юридический адрес', value: company.address, wide: true },
   ]
   return (
@@ -48,7 +49,7 @@ function CompanyData({ company }: { company: CompanyLookup }) {
           </div>
         ))}
       </dl>
-      <p className={styles.companySource}>Данные из ЕГРЮЛ — менять их не нужно. Если что-то устарело, обновите сведения в налоговой.</p>
+      <p className={styles.companySource}>Данные из ЕГРЮЛ и ФНС — менять их не нужно.</p>
     </div>
   )
 }
@@ -148,7 +149,7 @@ export function CompanyStep({ application, nav }: { application: Application; na
       )}
 
       {checked && !mismatch && (
-        <Alert tone="success" title="Данные получены из ЕГРЮЛ">
+        <Alert tone="success" title="Данные получены из ЕГРЮЛ и ФНС">
           Реквизиты совпадают с профилем компании — менять их не нужно.
         </Alert>
       )}

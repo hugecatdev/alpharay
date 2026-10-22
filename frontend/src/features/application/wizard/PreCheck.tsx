@@ -27,7 +27,7 @@ export function PreCheck({ result, onFix }: { result: PrecheckResult; onFix: (fi
       {result.items.length === 0 ? (
         <p className={styles.ok}>
           <CheckCircle2 size={18} />
-          Параметры укладываются в правила кабинета: сумма в пределах лимита, платёж посильный для вашего денежного потока.
+          Параметры укладываются в правила кабинета: сумма в пределах лимита, все платежи по кредитам — до 40% денежного потока.
         </p>
       ) : (
         <ul className={styles.list}>

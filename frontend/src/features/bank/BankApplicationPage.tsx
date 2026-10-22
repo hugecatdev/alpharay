@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, FileText, Gavel, UserCheck } from 'lucide-react'
 import type { AppEvent, BankApplication } from '@/api'
 import { useCurrentUser } from '@/features/auth/AuthProvider'
-import { loanSummary } from '@/shared/lib/annuity'
+import { creditSummary } from '@/shared/lib/annuity'
 import { formatDate, formatDateTime, formatTerm } from '@/shared/lib/dates'
 import { documentKindLabels, purposeLabels } from '@/shared/lib/labels'
 import { formatFileSize, formatMoney, formatRate } from '@/shared/lib/money'
@@ -172,7 +172,8 @@ export function BankApplicationPage() {
   const application = query.data
   if (!application) return <EmptyState title="Заявка не найдена" />
 
-  const base = loanSummary(application.amount, application.term, application.product.base_rate)
+  const revolving = application.product.repayment === 'REVOLVING'
+  const base = creditSummary(application.product.repayment, application.amount, application.term, application.product.base_rate)
   const canDecide = application.status === 'MANUAL_REVIEW'
   const history = events.data?.length ? historyFromEvents(events.data) : buildHistory(application)
 
@@ -189,8 +190,12 @@ export function BankApplicationPage() {
                 { label: 'Сумма', value: formatMoney(application.amount) },
                 { label: 'Срок', value: formatTerm(application.term) },
                 { label: 'Ставка продукта', value: formatRate(application.product.base_rate) },
-                { label: 'Платёж по базовой ставке', value: formatMoney(base.monthly_payment) },
-                { label: 'Переплата', value: formatMoney(base.overpayment) },
+                revolving
+                  ? { label: 'Проценты при полном лимите', value: `${formatMoney(base.monthly_payment)} / мес` }
+                  : { label: 'Платёж по базовой ставке', value: formatMoney(base.monthly_payment) },
+                revolving
+                  ? { label: 'Погашение', value: 'поступлениями, транш до 60 дней' }
+                  : { label: 'Переплата', value: formatMoney(base.overpayment) },
                 { label: 'Тип цели', value: application.purpose_type ? purposeLabels[application.purpose_type].title : '—' },
                 { label: 'Подана', value: application.submitted_at ? formatDateTime(application.submitted_at) : 'Не подана' },
               ]}
@@ -252,8 +257,6 @@ export function BankApplicationPage() {
         </div>
 
         <aside className={styles.right}>
-          <ScoringPanel scoring={application.scoring} />
-          <RecommendationCard recommendation={application.recommendation} />
           <Card
             title={canDecide ? 'Решение' : 'Решение принято'}
             padding="md"
@@ -265,6 +268,8 @@ export function BankApplicationPage() {
               <DecisionSummary application={application} justSent={justSent} />
             )}
           </Card>
+          <RecommendationCard recommendation={application.recommendation} />
+          <ScoringPanel scoring={application.scoring} />
         </aside>
       </div>
     </div>

@@ -10,13 +10,13 @@ export const decisionTypeLabels: Record<DecisionType, string> = {
 
 export const actorTypeLabels: Record<ActorType, string> = {
   CLIENT: 'Вы',
-  SYSTEM: 'Система',
+  SYSTEM: 'Банк',
   UNDERWRITER: 'Специалист банка',
 }
 
 export function madeByLabel(madeBy: string): string {
-  if (!madeBy || madeBy === 'SYSTEM') return 'Автоматическое решение'
-  return `Специалист: ${madeBy}`
+  if (!madeBy || madeBy === 'SYSTEM') return 'Решение принято автоматически'
+  return madeBy
 }
 
 export function documentKindFor(code: string): DocumentKind {

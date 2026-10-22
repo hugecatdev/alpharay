@@ -5,7 +5,7 @@ import { ChevronRight, FilePlus2, Files } from 'lucide-react'
 import { applicationsApi, queryKeys, type ApplicationShort } from '@/api'
 import { useAssistantScreen } from '@/features/assistant/AssistantProvider'
 import { cn } from '@/shared/lib/cn'
-import { formatRelative, formatTerm } from '@/shared/lib/dates'
+import { formatTerm, formatUpdated } from '@/shared/lib/dates'
 import { formatMoney } from '@/shared/lib/money'
 import { isProcessing, statusGroup, statusMeta, type StatusGroup } from '@/shared/lib/statusMeta'
 import { ButtonLink, EmptyState, ErrorState, PageHeader, Skeleton, StatusBadge, StatusTile, Tabs } from '@/shared/ui'
@@ -53,7 +53,7 @@ function ApplicationRow({ application }: { application: ApplicationShort }) {
         </span>
         <span className={styles.status}>
           <StatusBadge status={application.status} />
-          <span className={styles.updated}>{formatRelative(application.updated_at)}</span>
+          <span className={styles.updated}>{formatUpdated(application.updated_at)}</span>
         </span>
         <ChevronRight size={18} className={styles.chevron} aria-hidden />
       </Link>

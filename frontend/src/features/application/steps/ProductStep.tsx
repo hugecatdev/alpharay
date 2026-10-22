@@ -1,16 +1,40 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Banknote, Factory, Hourglass, Package, Wallet } from 'lucide-react'
+import {
+  BadgePercent,
+  Banknote,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Factory,
+  Hourglass,
+  Landmark,
+  Layers,
+  Package,
+  RefreshCw,
+  TrendingUp,
+  Truck,
+  Wallet,
+} from 'lucide-react'
 import { z } from 'zod'
-import { ApiError, applicationsApi, queryKeys, type Application, type CompanyInsights, type Product, type PurposeType } from '@/api'
+import {
+  ApiError,
+  applicationsApi,
+  queryKeys,
+  type Application,
+  type CompanyInsights,
+  type Product,
+  type ProductCategory,
+  type PurposeType,
+} from '@/api'
 import { AskButton } from '@/features/assistant/AskButton'
 import { useAssistantScreen } from '@/features/assistant/AssistantProvider'
 import { cn } from '@/shared/lib/cn'
-import { PURPOSE_ORDER, purposeLabels } from '@/shared/lib/labels'
+import { PRODUCT_CATEGORY_ORDER, PURPOSE_ORDER, collateralLabels, productCategoryLabels, purposeLabels } from '@/shared/lib/labels'
 import { formatMoneyShort, formatRate } from '@/shared/lib/money'
 import { Alert, Badge, Field, Textarea } from '@/shared/ui'
 import { clamp, defaultAmount, defaultTerm } from '../wizard/metrics'
-import { usePatchApplication } from '../wizard/useWizardData'
+import { useCompany, usePatchApplication } from '../wizard/useWizardData'
 import type { LiveParams, StepNav } from '../wizard/types'
 import { WizardFooter } from '../wizard/WizardFooter'
 import styles from './Steps.module.css'
@@ -19,16 +43,27 @@ const purposeIcons: Record<PurposeType, ReactNode> = {
   CASH_GAP: <Hourglass size={20} />,
   WORKING_CAPITAL: <Package size={20} />,
   EQUIPMENT: <Factory size={20} />,
+  INVESTMENT: <TrendingUp size={20} />,
+  REAL_ESTATE: <Building2 size={20} />,
+  GOV_CONTRACT: <Landmark size={20} />,
+  REFINANCING: <RefreshCw size={20} />,
 }
 
 const productIcons: Record<string, ReactNode> = {
   OVERDRAFT: <Wallet size={20} />,
   WORKING_CAPITAL: <Package size={20} />,
+  CREDIT_LINE: <Layers size={20} />,
   EQUIPMENT: <Factory size={20} />,
+  LEASING: <Truck size={20} />,
+  INVESTMENT: <TrendingUp size={20} />,
+  COMMERCIAL_MORTGAGE: <Building2 size={20} />,
+  GOV_CONTRACT: <Landmark size={20} />,
+  SUBSIDIZED: <BadgePercent size={20} />,
+  REFINANCING: <RefreshCw size={20} />,
 }
 
 const schema = z.object({
-  purpose_type: z.enum(['WORKING_CAPITAL', 'CASH_GAP', 'EQUIPMENT'], {
+  purpose_type: z.enum(['WORKING_CAPITAL', 'CASH_GAP', 'EQUIPMENT', 'INVESTMENT', 'REAL_ESTATE', 'GOV_CONTRACT', 'REFINANCING'], {
     errorMap: () => ({ message: 'Выберите, на что нужны деньги' }),
   }),
   product_code: z.string({ required_error: 'Выберите продукт' }).min(1, 'Выберите продукт'),
@@ -52,13 +87,29 @@ function purposeText(purpose: PurposeType | null, text: string): string {
   return purpose ? purposeLabels[purpose].title : ''
 }
 
+function eligible(product: Product, okved: string): boolean {
+  if (product.okved_prefixes.length === 0 || okved === '') return true
+  return product.okved_prefixes.some((prefix) => okved.startsWith(prefix))
+}
+
+function reveal(node: HTMLElement | null | undefined) {
+  node?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+}
+
 export function ProductStep({ application, products, insights, initialProductCode, onLive, onCreated, nav }: ProductStepProps) {
   const queryClient = useQueryClient()
+  const company = useCompany().data
+  const okved = application?.company.okved_main ?? company?.okved_main ?? ''
   const initialProduct = products.find((product) => product.code === (application?.product.code ?? initialProductCode))
   const [purposeType, setPurposeType] = useState<PurposeType | null>(
     application?.purpose_type ?? initialProduct?.purpose_types[0] ?? null,
   )
   const [productCode, setProductCode] = useState<string | null>(initialProduct?.code ?? null)
+  const [activeCategory, setActiveCategory] = useState<ProductCategory>(initialProduct?.category ?? 'WORKING')
+  const [revealCode, setRevealCode] = useState<string | null>(null)
+  const [edges, setEdges] = useState({ prev: false, next: false })
+  const cardRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const rowRef = useRef<HTMLDivElement | null>(null)
   const [text, setText] = useState(() => {
     if (!application) return ''
     const preset = application.purpose_type ? purposeLabels[application.purpose_type].title : ''
@@ -81,6 +132,34 @@ export function ProductStep({ application, products, insights, initialProductCod
     onLive({ productCode: productCode ?? undefined })
   }, [productCode, onLive])
 
+  useEffect(() => {
+    if (!revealCode) return
+    reveal(cardRefs.current[revealCode])
+    setRevealCode(null)
+  }, [revealCode])
+
+  useEffect(() => {
+    const row = rowRef.current
+    if (!row) return
+    const update = () => setEdges({ prev: row.scrollLeft > 2, next: row.scrollLeft + row.clientWidth < row.scrollWidth - 2 })
+    update()
+    row.addEventListener('scroll', update, { passive: true })
+    const observer = new ResizeObserver(update)
+    observer.observe(row)
+    return () => {
+      row.removeEventListener('scroll', update)
+      observer.disconnect()
+    }
+  }, [activeCategory, products])
+
+  function scrollRow(direction: -1 | 1) {
+    const row = rowRef.current
+    if (!row) return
+    const card = row.firstElementChild instanceof HTMLElement ? row.firstElementChild : null
+    const step = card ? card.offsetWidth + 14 : row.clientWidth * 0.8
+    row.scrollBy({ left: direction * step, behavior: 'smooth' })
+  }
+
   useAssistantScreen({
     screen: 'wizard.product',
     title: 'Заявка: выбор продукта',
@@ -98,10 +177,14 @@ export function ProductStep({ application, products, insights, initialProductCod
     setPurposeType(next)
     setErrors((current) => ({ ...current, purpose_type: undefined }))
     const current = products.find((product) => product.code === productCode)
-    if (!current || !current.purpose_types.includes(next)) {
-      const fitting = products.find((product) => product.purpose_types.includes(next))
-      if (fitting) setProductCode(fitting.code)
-    }
+    const target =
+      current && current.purpose_types.includes(next)
+        ? current
+        : products.find((product) => product.purpose_types.includes(next) && eligible(product, okved))
+    if (!target) return
+    setProductCode(target.code)
+    setActiveCategory(target.category)
+    setRevealCode(target.code)
   }
 
   function submit() {
@@ -141,6 +224,69 @@ export function ProductStep({ application, products, insights, initialProductCod
     )
   }
 
+  function renderProduct(product: Product) {
+    const fits = purposeType ? product.purpose_types.includes(purposeType) : false
+    const available = eligible(product, okved)
+    const selectedProduct = productCode === product.code
+    return (
+      <button
+        key={product.code}
+        ref={(node) => {
+          cardRefs.current[product.code] = node
+        }}
+        type="button"
+        data-assist={`product-${product.code}`}
+        aria-pressed={selectedProduct}
+        disabled={!available}
+        className={cn(styles.offer, selectedProduct && styles.offerOn, !available && styles.offerOff)}
+        onClick={() => {
+          setProductCode(product.code)
+          setActiveCategory(product.category)
+          if (!purposeType || !product.purpose_types.includes(purposeType)) setPurposeType(product.purpose_types[0] ?? purposeType)
+          setErrors((current) => ({ ...current, product_code: undefined, purpose_type: undefined }))
+        }}
+      >
+        <span className={styles.offerHead}>
+          <span className={styles.offerIcon}>{productIcons[product.code] ?? <Banknote size={20} />}</span>
+          <span className={styles.offerName}>{product.name}</span>
+          <span className={styles.offerRadio} aria-hidden />
+        </span>
+        <span className={styles.offerFigures}>
+          <span className={styles.offerRate}>
+            <strong className="tabular">
+              <small>от</small> {formatRate(product.base_rate)}
+            </strong>
+            <span>годовых</span>
+          </span>
+          <span className={styles.offerStats}>
+            <span>
+              <strong className="tabular">{formatMoneyShort(product.max_amount)}</strong>
+              <span>сумма до</span>
+            </span>
+            <span>
+              <strong className="tabular">{product.max_term} мес.</strong>
+              <span>срок до</span>
+            </span>
+          </span>
+        </span>
+        <span className={styles.offerDescription}>{product.description}</span>
+        <span className={styles.offerBadges}>
+          <Badge tone="neutral">{collateralLabels[product.collateral]}</Badge>
+          {product.down_payment_share > 0 && (
+            <Badge tone="neutral">Аванс от {Math.round(product.down_payment_share * 100)}%</Badge>
+          )}
+          {product.repayment === 'REVOLVING' && <Badge tone="neutral">Проценты на остаток</Badge>}
+          {product.targeted && <Badge tone="neutral">Целевой</Badge>}
+          {!available ? (
+            <Badge tone="warning">Только приоритетные отрасли</Badge>
+          ) : (
+            purposeType && <Badge tone={fits ? 'success' : 'neutral'}>{fits ? 'Подходит под цель' : 'Для других целей'}</Badge>
+          )}
+        </span>
+      </button>
+    )
+  }
+
   const failure = create.error ?? patch.error
   const pending = create.isPending || patch.isPending
 
@@ -148,8 +294,8 @@ export function ProductStep({ application, products, insights, initialProductCod
     <div className={styles.stack}>
       {insights && insights.pre_approved_limit > 0 && (
         <Alert tone="info" title={`Предварительно доступно до ${formatMoneyShort(insights.pre_approved_limit)}`}>
-          Рассчитали по оборотам вашего счёта в AlphaRay. Это ориентир, а не решение банка — финальные условия появятся после
-          рассмотрения заявки.
+          Рассчитали по оборотам вашего счёта в AlphaRay с учётом текущих кредитов: при такой сумме все платежи займут не больше
+          40% денежного потока. Это ориентир, а не решение банка — финальные условия появятся после рассмотрения заявки.
         </Alert>
       )}
 
@@ -187,57 +333,41 @@ export function ProductStep({ application, products, insights, initialProductCod
           </h3>
           <span className={styles.sectionHint}>Ставка и лимиты — до рассмотрения заявки</span>
         </div>
+        <div className={styles.segments} data-assist="product-groups">
+          {PRODUCT_CATEGORY_ORDER.map((category) => (
+            <button
+              key={category}
+              type="button"
+              aria-pressed={activeCategory === category}
+              className={cn(styles.segment, activeCategory === category && styles.segmentOn)}
+              onClick={() => setActiveCategory(category)}
+            >
+              {productCategoryLabels[category]}
+            </button>
+          ))}
+        </div>
         <div className={styles.offersWrap}>
-          <div className={styles.offers}>
-            {products.map((product) => {
-              const fits = purposeType ? product.purpose_types.includes(purposeType) : false
-              const selectedProduct = productCode === product.code
-              return (
-                <button
-                  key={product.code}
-                  type="button"
-                  data-assist={`product-${product.code}`}
-                  aria-pressed={selectedProduct}
-                  className={cn(styles.offer, selectedProduct && styles.offerOn)}
-                  onClick={() => {
-                    setProductCode(product.code)
-                    if (!purposeType || !product.purpose_types.includes(purposeType)) setPurposeType(product.purpose_types[0] ?? purposeType)
-                    setErrors((current) => ({ ...current, product_code: undefined, purpose_type: undefined }))
-                  }}
-                >
-                  <span className={styles.offerHead}>
-                    <span className={styles.offerIcon}>{productIcons[product.code] ?? <Banknote size={20} />}</span>
-                    <span className={styles.offerName}>{product.name}</span>
-                    <span className={styles.offerRadio} aria-hidden />
-                  </span>
-                  <span className={styles.offerFigures}>
-                    <span className={styles.offerRate}>
-                      <strong className="tabular">
-                        <small>от</small> {formatRate(product.base_rate)}
-                      </strong>
-                      <span>годовых</span>
-                    </span>
-                    <span className={styles.offerStats}>
-                      <span>
-                        <strong className="tabular">{formatMoneyShort(product.max_amount)}</strong>
-                        <span>сумма до</span>
-                      </span>
-                      <span>
-                        <strong className="tabular">{product.max_term} мес.</strong>
-                        <span>срок до</span>
-                      </span>
-                    </span>
-                  </span>
-                  <span className={styles.offerDescription}>{product.description}</span>
-                  {purposeType && (
-                    <Badge tone={fits ? 'success' : 'neutral'} className={styles.fitBadge}>
-                      {fits ? 'Подходит под цель' : 'Для других целей'}
-                    </Badge>
-                  )}
-                </button>
-              )
-            })}
+          <div ref={rowRef} className={styles.offers}>
+            {products.filter((product) => product.category === activeCategory).map(renderProduct)}
           </div>
+          <button
+            type="button"
+            className={cn(styles.arrow, styles.arrowLeft)}
+            aria-label="Предыдущие продукты"
+            disabled={!edges.prev}
+            onClick={() => scrollRow(-1)}
+          >
+            <ChevronLeft size={28} strokeWidth={2.5} />
+          </button>
+          <button
+            type="button"
+            className={cn(styles.arrow, styles.arrowRight)}
+            aria-label="Следующие продукты"
+            disabled={!edges.next}
+            onClick={() => scrollRow(1)}
+          >
+            <ChevronRight size={28} strokeWidth={2.5} />
+          </button>
         </div>
         {errors.product_code && <span className={styles.error}>{errors.product_code}</span>}
         {selected?.requires_invoice && (

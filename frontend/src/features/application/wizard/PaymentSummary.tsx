@@ -5,6 +5,35 @@ import type { LoanMetrics } from './metrics'
 import styles from './PaymentSummary.module.css'
 
 export function PaymentSummary({ metrics, rate }: { metrics: LoanMetrics; rate: number }) {
+  if (metrics.revolving) {
+    return (
+      <div className={styles.panel} data-assist="payment-summary">
+        <div className={styles.monthly}>
+          <span className={styles.label}>
+            Проценты в месяц при полном использовании
+            <AskButton question="Как начисляются проценты по овердрафту и как он гасится?" />
+          </span>
+          <strong className={styles.big}>
+            <FadeValue value={formatMoney(metrics.monthly)} />
+          </strong>
+          <span className={styles.rate}>Ставка от {formatRate(rate)} годовых · только на использованную сумму</span>
+        </div>
+        <div className={styles.details}>
+          <div>
+            <span className={styles.label}>Как гасится</span>
+            <strong>Поступлениями на счёт</strong>
+          </div>
+          <div>
+            <span className={styles.label}>Каждый транш</span>
+            <strong>до 60 дней</strong>
+          </div>
+        </div>
+        <p className={styles.note}>
+          Графика платежей нет: не используете лимит — не платите. Предварительный расчёт, условия определяет банк.
+        </p>
+      </div>
+    )
+  }
   return (
     <div className={styles.panel} data-assist="payment-summary">
       <div className={styles.monthly}>
@@ -17,6 +46,7 @@ export function PaymentSummary({ metrics, rate }: { metrics: LoanMetrics; rate: 
         </strong>
         <span className={styles.rate}>
           Ставка от {formatRate(rate)} годовых · аннуитетный платёж
+          {metrics.existing > 0 && <> · с текущими кредитами {formatMoney(metrics.monthly + metrics.existing)}</>}
         </span>
       </div>
       <div className={styles.details}>

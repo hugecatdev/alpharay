@@ -139,17 +139,14 @@ export interface TimelineStage {
 }
 
 export const TIMELINE: TimelineStage[] = [
-  { key: 'submitted', title: 'Отправлена', statuses: ['SUBMITTED'] },
-  { key: 'validating', title: 'Проверка', statuses: ['VALIDATING'] },
-  { key: 'enriching', title: 'Данные', statuses: ['ENRICHING'] },
-  { key: 'scoring', title: 'Оценка', statuses: ['SCORING'] },
   {
-    key: 'decision',
-    title: 'Решение',
-    statuses: ['DECIDING', 'MANUAL_REVIEW', 'NEED_INFO', 'COUNTER_OFFER', 'APPROVED', 'REJECTED', 'CLIENT_DECLINED'],
+    key: 'review',
+    title: 'Рассмотрение',
+    statuses: ['SUBMITTED', 'VALIDATING', 'ENRICHING', 'SCORING', 'DECIDING', 'MANUAL_REVIEW', 'NEED_INFO'],
   },
+  { key: 'decision', title: 'Решение', statuses: ['COUNTER_OFFER', 'APPROVED', 'REJECTED', 'CLIENT_DECLINED'] },
   { key: 'signing', title: 'Подписание', statuses: ['SIGNING', 'SIGNED'] },
-  { key: 'disbursed', title: 'Выдача', statuses: ['DISBURSED'] },
+  { key: 'disbursed', title: 'Зачисление', statuses: ['DISBURSED'] },
 ]
 
 export function timelineIndex(status: ApplicationStatus): number {

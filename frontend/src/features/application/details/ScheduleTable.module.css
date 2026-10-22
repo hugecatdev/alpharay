@@ -57,3 +57,9 @@
 .progressHead b {
   color: var(--text);
 }
+
+.revolving {
+  margin: 0;
+  line-height: 1.55;
+  color: var(--muted);
+}

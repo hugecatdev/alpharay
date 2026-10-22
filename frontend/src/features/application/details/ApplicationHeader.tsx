@@ -21,7 +21,13 @@ export function ApplicationHeader({ application }: { application: Application })
       updateCache(next)
     },
   })
-  const rate = application.offer?.rate ?? application.product.base_rate
+  const offer = application.offer
+  const agreed = offer && application.status !== 'COUNTER_OFFER' && offer.status !== 'DECLINED' ? offer : null
+  const amount = agreed?.amount ?? application.amount
+  const term = agreed?.term ?? application.term
+  const rate = agreed?.rate ?? application.product.base_rate
+  const revolving = application.product.repayment === 'REVOLVING'
+  const requestedLabel = application.status === 'COUNTER_OFFER' ? ' в заявке' : ''
 
   return (
     <header className={styles.header}>
@@ -58,15 +64,18 @@ export function ApplicationHeader({ application }: { application: Application })
       </div>
       <dl className={styles.meta}>
         <div className={styles.metaMain}>
-          <dt>Сумма</dt>
-          <dd className="tabular">{formatMoney(application.amount)}</dd>
+          <dt>
+            {revolving ? 'Лимит' : 'Сумма'}
+            {requestedLabel}
+          </dt>
+          <dd className="tabular">{formatMoney(amount)}</dd>
         </div>
         <div>
-          <dt>Срок</dt>
-          <dd>{formatTerm(application.term)}</dd>
+          <dt>Срок{requestedLabel}</dt>
+          <dd>{formatTerm(term)}</dd>
         </div>
         <div>
-          <dt>{application.offer ? 'Ставка' : 'Базовая ставка'}</dt>
+          <dt>{agreed ? 'Ставка' : 'Базовая ставка'}</dt>
           <dd>{formatRate(rate)}</dd>
         </div>
         <div>

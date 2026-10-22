@@ -3,8 +3,6 @@ import type { ApiErrorBody } from './types'
 const TOKEN_KEY = 'alpharay-token'
 const API_PREFIX = '/api'
 
-export const apiMode: 'mock' | 'real' = import.meta.env.VITE_API_MODE === 'mock' ? 'mock' : 'real'
-
 export class ApiError extends Error {
   readonly status: number
   readonly code: string

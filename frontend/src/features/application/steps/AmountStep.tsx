@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError, type Application, type CompanyInsights } from '@/api'
 import { AskButton } from '@/features/assistant/AskButton'
-import { useAssistantScreen } from '@/features/assistant/AssistantProvider'
+import { useAssistantFiller, useAssistantScreen } from '@/features/assistant/AssistantProvider'
 import { useSettledValue } from '@/shared/hooks/useSettledValue'
 import { cn } from '@/shared/lib/cn'
-import { formatMoneyShort } from '@/shared/lib/money'
+import { formatMoney, formatMoneyShort } from '@/shared/lib/money'
 import { Alert, NumberSlider } from '@/shared/ui'
 import { CashFlowFit } from '../wizard/CashFlowFit'
 import { clamp, computeMetrics, runPrecheck, sharePercent, type CheckFix } from '../wizard/metrics'
@@ -35,10 +35,12 @@ export function AmountStep({ application, insights, onLive, nav }: AmountStepPro
   const settledAmount = useSettledValue(amount)
   const settledTerm = useSettledValue(term)
   const pending = settledAmount !== amount || settledTerm !== term
+  const revolving = product.repayment === 'REVOLVING'
   const metrics = useMemo(
-    () => computeMetrics(settledAmount, settledTerm, rate, insights),
-    [settledAmount, settledTerm, rate, insights],
+    () => computeMetrics(settledAmount, settledTerm, rate, insights, product.repayment),
+    [settledAmount, settledTerm, rate, insights, product.repayment],
   )
+  const downPayment = product.down_payment_share > 0 ? Math.round(amount / (1 - product.down_payment_share)) - amount : 0
   const precheck = useMemo(
     () => runPrecheck(settledAmount, settledTerm, rate, product, insights),
     [settledAmount, settledTerm, rate, product, insights],
@@ -61,7 +63,11 @@ export function AmountStep({ application, insights, onLive, nav }: AmountStepPro
       monthly_payment: metrics.monthly,
       overpayment: metrics.overpayment,
       total_payment: metrics.total,
-      payment_share_of_cashflow: sharePercent(metrics.share),
+      repayment: revolving ? 'возобновляемый лимит, проценты только на использованную сумму' : 'аннуитет',
+      existing_monthly_payments: metrics.existing,
+      debt_load_percent: sharePercent(metrics.share),
+      revenue_drop_reserve_percent: metrics.reserve === null ? null : Math.round(metrics.reserve * 100),
+      down_payment: downPayment || null,
       risk_level: metrics.riskLevel,
       precheck_level: precheck.level,
       min_amount: product.min_amount,
@@ -76,6 +82,17 @@ export function AmountStep({ application, insights, onLive, nav }: AmountStepPro
     if (fix.amount !== undefined) setAmount(clamp(fix.amount, product.min_amount, product.max_amount))
     if (fix.term !== undefined) setTerm(clamp(fix.term, product.min_term, product.max_term))
   }
+
+  useAssistantFiller(
+    useCallback(
+      (action) => {
+        if (action.amount !== null) setAmount(clamp(action.amount, product.min_amount, product.max_amount))
+        if (action.term !== null) setTerm(clamp(action.term, product.min_term, product.max_term))
+        return true
+      },
+      [product],
+    ),
+  )
 
   const changed = amount !== application.amount || term !== application.term
 
@@ -93,7 +110,7 @@ export function AmountStep({ application, insights, onLive, nav }: AmountStepPro
         <div className={styles.calc}>
           <div className={styles.calcInputs}>
             <NumberSlider
-              label="Сумма кредита"
+              label={revolving ? 'Лимит овердрафта' : 'Сумма кредита'}
               assist="amount"
               value={amount}
               min={product.min_amount}
@@ -104,8 +121,15 @@ export function AmountStep({ application, insights, onLive, nav }: AmountStepPro
               onChange={setAmount}
               help={<AskButton question="Какую сумму кредита разумно запросить для моего бизнеса?" />}
             />
+            {downPayment > 0 && (
+              <p className={styles.calcNote} data-assist="down-payment">
+                Собственный аванс — от {formatMoney(downPayment)} ({Math.round(product.down_payment_share * 100)}% стоимости):
+                кредит покрывает оборудование стоимостью до {formatMoney(amount + downPayment)}. Оборудование остаётся в залоге у
+                банка.
+              </p>
+            )}
             <NumberSlider
-              label="Срок кредита"
+              label={revolving ? 'Срок действия лимита' : 'Срок кредита'}
               assist="term"
               value={term}
               min={product.min_term}
@@ -123,9 +147,13 @@ export function AmountStep({ application, insights, onLive, nav }: AmountStepPro
         </div>
       </div>
       <div className={cn(styles.results, pending && styles.pending)}>
-        <TermCompare amount={settledAmount} term={settledTerm} rate={rate} product={product} insights={insights} onSelect={setTerm} />
-        <ScheduleToggle amount={settledAmount} term={settledTerm} rate={rate} />
-        <CashFlowFit metrics={metrics} />
+        {!revolving && (
+          <>
+            <TermCompare amount={settledAmount} term={settledTerm} rate={rate} product={product} insights={insights} onSelect={setTerm} />
+            <ScheduleToggle amount={settledAmount} term={settledTerm} rate={rate} />
+            <CashFlowFit metrics={metrics} />
+          </>
+        )}
         <PreCheck result={precheck} onFix={applyFix} />
         <RiskWarning metrics={metrics} />
       </div>

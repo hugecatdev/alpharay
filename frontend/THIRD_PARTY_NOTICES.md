@@ -22,11 +22,10 @@
 | vite, @vitejs/plugin-react | MIT |
 | typescript | Apache-2.0 |
 | eslint, @eslint/js, typescript-eslint, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals | MIT |
-| msw (Mock Service Worker) | MIT |
 | @playwright/test | Apache-2.0 |
 | Docker-образы node:22-alpine, nginx:1.27-alpine | MIT / BSD-2-Clause (nginx) |
 
-## Смоделированные интеграции (только мок-режим, `src/api/mock`)
+## Смоделированные интеграции (на бэкенде, `backend/app`)
 
 Все данные синтетические. Реальные сервисы не вызываются.
 
@@ -35,4 +34,4 @@
 - бюро кредитных историй — рейтинг, кредиты, просрочки (`enrichment.bki`);
 - расчётный счёт клиента в банке — обороты, текущие кредиты, предварительный лимит (`/company/insights`);
 - электронное подписание — код подтверждения внутри кабинета (`4821` в демо), без SMS;
-- ИИ-ассистент — rule-based ответы по экрану. Реальная LLM подключается на бэкенде; допускаются только модели с открытыми весами.
+- ИИ-ассистент — LLM с открытыми весами через OpenAI-совместимый API (по умолчанию Groq). Без ключа ассистент скрыт.

@@ -1,0 +1,46 @@
+name: alpharay
+
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      DATA_FILE: /data/state.json
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - backend-data:/data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      API_UPSTREAM: http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:0.40.5
+    profiles: ["ollama"]
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+  ollama-pull:
+    image: ollama/ollama:0.40.5
+    profiles: ["ollama"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-qwen3:8b}"]
+    depends_on:
+      - ollama
+    restart: on-failure
+
+volumes:
+  backend-data:
+  ollama-models:

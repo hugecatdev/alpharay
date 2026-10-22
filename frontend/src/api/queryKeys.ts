@@ -15,4 +15,11 @@ export const queryKeys = {
   bankApplication: (id: string) => ['bank', 'applications', id] as const,
   bankEvents: (id: string) => ['bank', 'applications', id, 'events'] as const,
   bankStats: ['bank', 'stats'] as const,
+  bankNotes: (id: string) => ['bank', 'applications', id, 'notes'] as const,
+  adminDashboard: (days: number | null) => ['admin', 'dashboard', days] as const,
+  adminApplications: (filters: string) => ['admin', 'applications', filters] as const,
+  adminStaff: ['admin', 'staff'] as const,
+  adminProducts: ['admin', 'products'] as const,
+  adminPolicy: ['admin', 'policy'] as const,
+  adminAudit: (filters: string) => ['admin', 'audit', filters] as const,
 }

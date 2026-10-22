@@ -132,22 +132,24 @@ table {
 }
 
 [data-assist-highlight='on'] {
-  position: relative;
   border-radius: var(--radius-sm);
+  outline: 2px solid var(--violet);
+  outline-offset: 10px;
   animation: assist-pulse 1.2s var(--ease-out) 2;
-  box-shadow: 0 0 0 3px var(--violet), 0 0 0 9px var(--violet-soft);
-  transition: box-shadow 0.4s;
 }
 
 @keyframes assist-pulse {
   0% {
-    box-shadow: 0 0 0 0 var(--violet), 0 0 0 0 var(--violet-soft);
+    outline-color: transparent;
+    outline-offset: 2px;
   }
   40% {
-    box-shadow: 0 0 0 3px var(--violet), 0 0 0 12px var(--violet-soft);
+    outline-color: var(--violet);
+    outline-offset: 14px;
   }
   100% {
-    box-shadow: 0 0 0 3px var(--violet), 0 0 0 9px var(--violet-soft);
+    outline-color: var(--violet);
+    outline-offset: 10px;
   }
 }
 

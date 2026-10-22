@@ -1,13 +1,31 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { CornerDownRight, Crosshair, Minimize2, RotateCcw, SendHorizontal, Sparkles } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { CornerDownRight, Crosshair, Minimize2, RotateCcw, SendHorizontal, SlidersHorizontal, Sparkles } from 'lucide-react'
+import type { AssistantAction } from '@/api'
 import { cn } from '@/shared/lib/cn'
+import { formatMoney } from '@/shared/lib/money'
 import { IconButton } from '@/shared/ui'
 import { Markdown } from './Markdown'
 import { useAssistant, type ChatItem } from './AssistantProvider'
 import styles from './AssistantPanel.module.css'
 
+function describeAction(action: AssistantAction): string {
+  const parts: string[] = []
+  if (action.amount !== null) parts.push(formatMoney(action.amount))
+  if (action.term !== null) parts.push(`${action.term} мес.`)
+  return parts.join(' · ')
+}
+
+function fallbackFor(pathname: string): { to: string; label: string } | null {
+  if (pathname.startsWith('/app/applications/')) return null
+  if (pathname.startsWith('/app/applications')) return { to: '/app/applications/new', label: 'Оформить заявку формой' }
+  if (pathname === '/app' || pathname === '/app/') return { to: '/app/applications', label: 'Открыть мои заявки' }
+  return null
+}
+
 function Message({ item, onHint }: { item: ChatItem; onHint: (target: string) => void }) {
+  const { pathname } = useLocation()
+  const fallback = item.failed ? fallbackFor(pathname) : null
   if (item.role === 'user') {
     return (
       <div className={cn(styles.message, styles.user)}>
@@ -18,10 +36,18 @@ function Message({ item, onHint }: { item: ChatItem; onHint: (target: string) =>
   return (
     <div className={cn(styles.message, styles.bot, item.failed && styles.failed)}>
       <Markdown source={item.content} />
-      {item.failed && (
-        <Link to="/app/applications/new" className={styles.fallbackLink}>
-          Перейти к новой заявке
+      {fallback && (
+        <Link to={fallback.to} className={styles.fallbackLink}>
+          {fallback.label}
         </Link>
+      )}
+      {item.actions.length > 0 && (
+        <p className={cn(styles.action, item.applied === false && styles.actionMissed)}>
+          <SlidersHorizontal size={15} aria-hidden />
+          {item.applied === false
+            ? `Не подставлено: откройте шаг «Сумма и срок» — ${item.actions.map(describeAction).join(', ')}`
+            : `Подставлено в форму: ${item.actions.map(describeAction).join(', ')}`}
+        </p>
       )}
       {item.hints.length > 0 && (
         <div className={styles.hints}>
@@ -97,7 +123,10 @@ export function AssistantPanel() {
 
       <div className={styles.conversation} ref={listRef} aria-live="polite">
         {messages.length === 0 && (
-          <p className={styles.welcome}>Объясню термины, расчёты и риски на этом экране. Оформление и решения — в форме слева.</p>
+          <p className={styles.welcome}>
+            Объясню термины, расчёты и риски на этом экране. По вашей просьбе подставлю сумму и срок в форму — проверяете и
+            отправляете заявку вы, решение принимает банк.
+          </p>
         )}
         {messages.map((item) => (
           <Message key={item.id} item={item} onHint={highlight} />

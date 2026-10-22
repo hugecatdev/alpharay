@@ -11,7 +11,8 @@ export function DebtLoadCard({ insights, loading }: { insights: CompanyInsights 
   const loans = insights?.loans ?? []
   const totalBalance = loans.reduce((sum, loan) => sum + loan.balance, 0)
   const totalMonthly = loans.reduce((sum, loan) => sum + loan.monthly_payment, 0)
-  const flow = insights?.avg_free_cash_flow ?? 0
+  const hasTurnover = (insights?.turnover.length ?? 0) > 0
+  const flow = hasTurnover ? (insights?.avg_free_cash_flow ?? 0) + totalMonthly : 0
   const share = flow > 0 ? (totalMonthly / flow) * 100 : 0
   const shareTone = share > 70 ? 'red' : share > 40 ? 'amber' : 'green'
 
@@ -89,15 +90,15 @@ export function DebtLoadCard({ insights, loading }: { insights: CompanyInsights 
         <div className={styles.flowShare}>
           <div className={styles.flowShareHead}>
             <span>
-              Нагрузка на свободный поток
-              <AskButton question="Что такое нагрузка на свободный денежный поток и какой уровень безопасен?" />
+              Долговая нагрузка
+              <AskButton question="Что такое долговая нагрузка на денежный поток и какой уровень безопасен?" />
             </span>
             <strong className={cn('tabular', styles[`share-${shareTone}`])}>{formatPercent(share)}</strong>
           </div>
-          <ProgressBar value={Math.min(share, 100)} max={100} tone={shareTone} height={5} label="Нагрузка на поток" />
+          <ProgressBar value={Math.min(share, 100)} max={100} tone={shareTone} height={5} label="Долговая нагрузка" />
           <p>
-            Средний свободный поток — <b className="tabular">{formatMoney(flow)}</b> в месяц. Комфортно, когда платежи
-            занимают до 40%.
+            Денежный поток до платежей по кредитам — <b className="tabular">{formatMoney(flow)}</b> в месяц. Комфортно, когда
+            все платежи занимают до 40%.
           </p>
         </div>
       )}

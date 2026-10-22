@@ -83,7 +83,9 @@ export function FinancingCta({ limit, loading }: { limit: number; loading: boole
             <>
               <span className={styles.offerLabel}>Предварительно доступно до</span>
               <strong className="tabular">{formatMoneyShort(limit)}</strong>
-              <span className={styles.offerNote}>По оборотам вашего счёта. Ориентир, а не решение банка.</span>
+              <span className={styles.offerNote}>
+                По оборотам счёта с учётом текущих кредитов: все платежи — до 40% потока. Ориентир, а не решение банка.
+              </span>
             </>
           ) : (
             <span className={styles.offerText}>Подберём продукт под задачу: оборотные средства, кассовый разрыв или оборудование.</span>

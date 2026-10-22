@@ -31,10 +31,10 @@ export function TurnoverCard({ insights, loading }: { insights: CompanyInsights 
         <>
           <div className={styles.turnoverStats}>
             <Stat
-              label="Средний свободный поток"
+              label="Средний чистый поток"
               value={formatMoney(insights?.avg_free_cash_flow ?? 0)}
               sub="в месяц, поступления минус списания"
-              help={<AskButton question="Что такое свободный денежный поток и почему банк на него смотрит?" />}
+              help={<AskButton question="Что такое чистый денежный поток и почему банк на него смотрит?" />}
             />
             <Stat
               label="Лучший месяц"

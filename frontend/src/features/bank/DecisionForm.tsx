@@ -3,8 +3,8 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Check, FileQuestion, SlidersHorizontal, X } from 'lucide-react'
-import { ApiError, type BankApplication, type BankDecisionRequest, type BankDecisionType } from '@/api'
-import { loanSummary } from '@/shared/lib/annuity'
+import { ApiError, type BankApplication, type BankDecisionRequest, type BankDecisionType, type Repayment } from '@/api'
+import { creditSummary } from '@/shared/lib/annuity'
 import { cn } from '@/shared/lib/cn'
 import { formatTerm } from '@/shared/lib/dates'
 import { infoRequestOptions, rejectReasonOptions } from '@/shared/lib/labels'
@@ -58,12 +58,12 @@ function FormActions({ submitting, onCancel, label, danger }: { submitting: bool
   )
 }
 
-function PaymentPreview({ amount, term, rate }: { amount: number; term: number; rate: number }) {
-  const summary = loanSummary(amount, term, Number.isFinite(rate) ? rate : 0)
+function PaymentPreview({ amount, term, rate, repayment }: { amount: number; term: number; rate: number; repayment: Repayment }) {
+  const summary = creditSummary(repayment, amount, term, Number.isFinite(rate) ? rate : 0)
   return (
     <div className={styles.preview}>
       <div>
-        <span>Платёж в месяц</span>
+        <span>{repayment === 'REVOLVING' ? 'Проценты при полном лимите' : 'Платёж в месяц'}</span>
         <strong className="tabular">{formatMoney(summary.monthly_payment)}</strong>
       </div>
       <div>
@@ -114,7 +114,7 @@ function ApproveForm({ application, submitting, onSubmit, onCancel }: FormProps)
           <Input id={id} type="number" step="0.1" suffix="%" invalid={Boolean(form.formState.errors.rate)} {...form.register('rate', { valueAsNumber: true })} />
         )}
       </Field>
-      <PaymentPreview amount={application.amount} term={application.term} rate={rate} />
+      <PaymentPreview amount={application.amount} term={application.term} rate={rate} repayment={application.product.repayment} />
       <Field label="Комментарий для клиента" hint="Необязательно" error={form.formState.errors.comment?.message}>
         {(id) => <Textarea id={id} rows={3} placeholder="Например: условия подтверждены" {...form.register('comment')} />}
       </Field>
@@ -156,8 +156,8 @@ function CounterForm({ application, submitting, onSubmit, onCancel }: FormProps)
     },
   })
   const [amount, term, rate] = form.watch(['amount', 'term', 'rate'])
-  const requested = loanSummary(application.amount, application.term, product.base_rate)
-  const offered = loanSummary(amount, term, Number.isFinite(rate) ? rate : 0)
+  const requested = creditSummary(product.repayment, application.amount, application.term, product.base_rate)
+  const offered = creditSummary(product.repayment, amount, term, Number.isFinite(rate) ? rate : 0)
   const errors = form.formState.errors
 
   return (

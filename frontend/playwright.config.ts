@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const port = Number(process.env.E2E_PORT ?? 5180)
+const apiPort = Number(process.env.E2E_API_PORT ?? 8010)
+const python = process.env.BACKEND_PYTHON ?? '.venv/bin/python'
 
 export default defineConfig({
   testDir: './e2e',
@@ -26,10 +28,21 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: `npx vite --mode mock --port ${port} --strictPort`,
-    url: `http://localhost:${port}`,
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      command: `${python} -m uvicorn app.main:app --host 127.0.0.1 --port ${apiPort}`,
+      cwd: '../backend',
+      url: `http://127.0.0.1:${apiPort}/api/health`,
+      env: { DATA_FILE: '', UPLOAD_DIR: '', DEMO_RESET_ENABLED: 'true' },
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+    {
+      command: `npx vite --port ${port} --strictPort`,
+      url: `http://localhost:${port}`,
+      env: { VITE_API_BASE_URL: `http://127.0.0.1:${apiPort}` },
+      reuseExistingServer: true,
+      timeout: 60_000,
+    },
+  ],
 })

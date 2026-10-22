@@ -139,7 +139,7 @@ export function TurnoverChart({ data }: { data: TurnoverMonth[] }) {
             <i className={styles.keyOut} /> Списания <b className="tabular">{formatMoney(activeMonth.outflow)}</b>
           </span>
           <span className={styles.free}>
-            Свободный поток <b className="tabular">{formatMoney(activeMonth.inflow - activeMonth.outflow)}</b>
+            Чистый поток <b className="tabular">{formatMoney(activeMonth.inflow - activeMonth.outflow)}</b>
           </span>
         </div>
       )}

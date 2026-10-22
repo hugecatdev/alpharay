@@ -39,6 +39,10 @@ export function formatRelative(value: string | Date, now: Date = new Date()): st
   return formatDate(date)
 }
 
+export function formatUpdated(value: string | Date, now: Date = new Date()): string {
+  return `обновлена ${formatRelative(value, now)}`
+}
+
 export function businessAge(registrationDate: string, now: Date = new Date()): { years: number; months: number; totalMonths: number } {
   const start = new Date(registrationDate)
   const totalMonths = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + now.getMonth() - start.getMonth())

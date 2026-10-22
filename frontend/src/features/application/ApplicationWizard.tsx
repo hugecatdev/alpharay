@@ -4,7 +4,7 @@ import { Save } from 'lucide-react'
 import type { Application, CompanyInsights, Product } from '@/api'
 import { CompanyGate } from '@/features/company/CompanyGate'
 import { useConfig } from '@/shared/hooks/useConfig'
-import { loanSummary } from '@/shared/lib/annuity'
+import { creditSummary } from '@/shared/lib/annuity'
 import { ButtonLink, Card, ErrorState, PageHeader, PageLoader, StatusBadge, Stepper } from '@/shared/ui'
 import { AmountStep } from './steps/AmountStep'
 import { CompanyStep } from './steps/CompanyStep'
@@ -32,13 +32,15 @@ function buildSummary(application: Application | null, products: Product[], live
   const product = products.find((item) => item.code === live.productCode) ?? application?.product
   const amount = application ? live.amount ?? application.amount : null
   const term = application ? live.term ?? application.term : null
-  if (!product || !amount || !term) return { productName: product?.name ?? null, amount, term, monthly: null, level: null }
+  const revolving = product?.repayment === 'REVOLVING'
+  if (!product || !amount || !term) return { productName: product?.name ?? null, amount, term, monthly: null, level: null, revolving }
   return {
     productName: product.name,
     amount,
     term,
-    monthly: loanSummary(amount, term, product.base_rate).monthly_payment,
+    monthly: creditSummary(product.repayment, amount, term, product.base_rate).monthly_payment,
     level: runPrecheck(amount, term, product.base_rate, product, insights).level,
+    revolving,
   }
 }
 

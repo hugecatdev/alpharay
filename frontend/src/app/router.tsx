@@ -27,7 +27,7 @@ export const router = createBrowserRouter([
   {
     path: '/app',
     element: (
-      <RequireRole role="CLIENT">
+      <RequireRole roles={['CLIENT']}>
         <AppShell role="CLIENT" />
       </RequireRole>
     ),
@@ -46,7 +46,7 @@ export const router = createBrowserRouter([
   {
     path: '/bank',
     element: (
-      <RequireRole role="UNDERWRITER">
+      <RequireRole roles={['UNDERWRITER', 'ADMIN']}>
         <AppShell role="UNDERWRITER" />
       </RequireRole>
     ),

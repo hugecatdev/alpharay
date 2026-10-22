@@ -52,7 +52,7 @@ function DashboardContent() {
       avg_free_cash_flow: insights.data?.avg_free_cash_flow ?? null,
       pre_approved_limit: insights.data?.pre_approved_limit ?? null,
     },
-    suggestions: ['Какой продукт мне подходит?', 'Сколько я могу взять без риска?', 'Что означает свободный денежный поток?'],
+    suggestions: ['Какой продукт мне подходит?', 'Сколько я могу взять без риска?', 'Что означает чистый денежный поток?'],
   })
 
   if (company.isError) return <ErrorState error={company.error} onRetry={() => void company.refetch()} />

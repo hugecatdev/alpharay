@@ -117,7 +117,7 @@ export function FinancialsOverview({ values, turnover, fromAccount, onEdit }: Fi
         <div className={styles.row} data-assist="tax_system">
           <span className={styles.rowLabel}>
             Сотрудники и налоги
-            <span className={styles.why}>Из профиля компании</span>
+            <span className={styles.why}>Сверяется с ФНС</span>
           </span>
           <span className={styles.rowValue} data-assist="employees_count">
             <strong className="tabular">

@@ -10,9 +10,10 @@ interface SummaryBarProps {
   term: number | null
   monthly: number | null
   level: CheckLevel | null
+  revolving?: boolean
 }
 
-export function SummaryBar({ productName, amount, term, monthly, level }: SummaryBarProps) {
+export function SummaryBar({ productName, amount, term, monthly, level, revolving = false }: SummaryBarProps) {
   const meta = level ? checkLevelMeta[level] : null
   useEffect(() => {
     document.documentElement.dataset.subbar = 'on'
@@ -29,7 +30,7 @@ export function SummaryBar({ productName, amount, term, monthly, level }: Summar
         </span>
       </div>
       <div className={styles.cell}>
-        <span className={styles.key}>Сумма</span>
+        <span className={styles.key}>{revolving ? 'Лимит' : 'Сумма'}</span>
         <span className={styles.value}>
           <FadeValue value={amount ? formatMoneyShort(amount) : '—'} />
         </span>
@@ -41,7 +42,7 @@ export function SummaryBar({ productName, amount, term, monthly, level }: Summar
         </span>
       </div>
       <div className={styles.cell}>
-        <span className={styles.key}>В месяц</span>
+        <span className={styles.key}>{revolving ? 'Проценты, макс.' : 'В месяц'}</span>
         <span className={styles.value}>
           <FadeValue value={monthly ? formatMoney(monthly) : '—'} />
         </span>

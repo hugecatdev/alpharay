@@ -1,4 +1,5 @@
-export type Role = 'CLIENT' | 'UNDERWRITER'
+export type Role = 'CLIENT' | 'UNDERWRITER' | 'ADMIN'
+export type BankRole = Exclude<Role, 'CLIENT'>
 
 export interface User {
   id: string
@@ -19,7 +20,10 @@ export interface LoginResponse {
   user: User
 }
 
-export type PurposeType = 'WORKING_CAPITAL' | 'CASH_GAP' | 'EQUIPMENT'
+export type PurposeType = 'WORKING_CAPITAL' | 'CASH_GAP' | 'EQUIPMENT' | 'INVESTMENT' | 'REAL_ESTATE' | 'GOV_CONTRACT' | 'REFINANCING'
+export type ProductCategory = 'WORKING' | 'INVESTMENT' | 'SPECIAL'
+export type Collateral = 'NONE' | 'GUARANTEE' | 'EQUIPMENT' | 'PROPERTY' | 'CONTRACT'
+export type Repayment = 'ANNUITY' | 'REVOLVING'
 
 export interface Product {
   code: string
@@ -32,12 +36,27 @@ export interface Product {
   base_rate: number
   purpose_types: PurposeType[]
   requires_invoice: boolean
+  category: ProductCategory
+  collateral: Collateral
+  repayment: Repayment
+  down_payment_share: number
+  targeted: boolean
+  okved_prefixes: string[]
+  active: boolean
+}
+
+export interface DemoAccount {
+  email: string
+  title: string
+  description: string
 }
 
 export interface AppConfig {
   assistant_enabled: boolean
   manual_review_amount_threshold: number
   products: Product[]
+  demo_password: string | null
+  demo_accounts: DemoAccount[]
 }
 
 export interface Payment {
@@ -292,12 +311,19 @@ export interface AssistantHint {
   label: string
 }
 
+export interface AssistantAction {
+  type: 'set_loan_params'
+  amount: number | null
+  term: number | null
+}
+
 export interface AssistantMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   hints: AssistantHint[]
   suggestions: string[]
+  actions: AssistantAction[]
   created_at: string
 }
 
@@ -409,6 +435,7 @@ export interface BankApplication extends Application {
   recommendation: Recommendation | null
   discrepancies: Discrepancy[]
   assigned_to: string | null
+  assignee_id: string | null
 }
 
 export type BankDecisionType = 'APPROVED' | 'COUNTER_OFFER' | 'NEED_INFO' | 'REJECTED'
@@ -435,4 +462,168 @@ export interface ApiErrorBody {
   detail: string
   code: string
   missing?: string[]
+}
+
+export interface ApplicationNote {
+  id: string
+  author_id: string
+  author_name: string
+  text: string
+  created_at: string
+}
+
+export type AutoDecision = 'APPROVED' | 'COUNTER_OFFER' | 'MANUAL_REVIEW' | 'REJECTED'
+
+export interface GradePolicy {
+  min_score: number
+  auto_decision: AutoDecision
+  rate_markup: number
+}
+
+export interface CreditPolicyInput {
+  manual_review_amount_threshold: number
+  product_review_thresholds: Record<string, number>
+  grades: Record<Grade, GradePolicy>
+  stop_factors_decision: 'REJECTED' | 'MANUAL_REVIEW'
+  counter_offer_share: number
+  offer_valid_days: number
+  manual_review_sla_hours: number
+  auto_assign: boolean
+  auto_disbursement: boolean
+}
+
+export interface CreditPolicy extends CreditPolicyInput {
+  updated_at: string | null
+  updated_by: string | null
+}
+
+export interface AuditEntry {
+  id: string
+  created_at: string
+  actor_id: string | null
+  actor_name: string
+  actor_role: 'UNDERWRITER' | 'ADMIN' | 'SYSTEM'
+  action: string
+  entity_type: 'application' | 'product' | 'policy' | 'staff'
+  entity_id: string
+  summary: string
+}
+
+export interface StaffMember {
+  id: string
+  email: string
+  full_name: string
+  role: BankRole
+  position: string
+  active: boolean
+  active_reviews: number
+  decisions_total: number
+}
+
+export interface StaffCreateRequest {
+  email: string
+  full_name: string
+  position?: string
+  role?: BankRole
+  password: string
+}
+
+export interface StaffPatchRequest {
+  full_name?: string
+  position?: string
+  role?: BankRole
+  active?: boolean
+  password?: string
+}
+
+export type ProductCreateRequest = Omit<
+  Product,
+  | 'active'
+  | 'description'
+  | 'requires_invoice'
+  | 'category'
+  | 'collateral'
+  | 'repayment'
+  | 'down_payment_share'
+  | 'targeted'
+  | 'okved_prefixes'
+> & {
+  description?: string
+  requires_invoice?: boolean
+  category?: ProductCategory
+  collateral?: Collateral
+  repayment?: Repayment
+  down_payment_share?: number
+  targeted?: boolean
+  okved_prefixes?: string[]
+  active?: boolean
+}
+
+export type ProductPatchRequest = Partial<Omit<Product, 'code'>>
+
+export interface ProductAdmin extends Product {
+  applications_total: number
+  applications_in_progress: number
+  disbursed_amount: number
+}
+
+export interface AdminApplicationRow extends BankApplicationShort {
+  assignee_id: string | null
+  submitted_at: string | null
+  waiting_hours: number
+  sla_breached: boolean
+}
+
+export interface AdminDashboard {
+  period_days: number | null
+  totals: {
+    applications: number
+    drafts: number
+    in_progress: number
+    manual_review: number
+    awaiting_client: number
+    approved: number
+    rejected: number
+    closed_by_client: number
+    disbursed_count: number
+    disbursed_amount: number
+  }
+  approval_rate: number
+  auto_decision_share: number
+  avg_time_to_decision_minutes: number
+  avg_manual_review_hours: number
+  funnel: { status: ApplicationStatus; count: number }[]
+  by_product: ProductStats[]
+  underwriters: UnderwriterStats[]
+  sla_hours: number
+  sla_breaches: SlaBreach[]
+}
+
+export interface ProductStats {
+  code: string
+  name: string
+  active: boolean
+  applications: number
+  approved: number
+  disbursed_amount: number
+  avg_amount: number
+}
+
+export interface UnderwriterStats {
+  id: string
+  full_name: string
+  role: BankRole
+  active: boolean
+  active_reviews: number
+  decisions: number
+  avg_review_hours: number
+}
+
+export interface SlaBreach {
+  id: string
+  number: string
+  company_name: string
+  amount: number
+  waiting_hours: number
+  assigned_to: string | null
 }

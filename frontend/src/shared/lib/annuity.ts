@@ -1,4 +1,4 @@
-import type { Payment } from '@/api/types'
+import type { Payment, Repayment } from '@/api/types'
 
 export function annuityPayment(amount: number, term: number, rate: number): number {
   if (amount <= 0 || term <= 0) return 0
@@ -17,6 +17,16 @@ export function loanSummary(amount: number, term: number, rate: number): LoanSum
   const monthly = Math.round(annuityPayment(amount, term, rate))
   const total = monthly * term
   return { monthly_payment: monthly, total_payment: total, overpayment: Math.max(0, total - amount) }
+}
+
+export function revolvingSummary(amount: number, term: number, rate: number): LoanSummary {
+  const monthly = amount > 0 ? Math.round((amount * rate) / 1200) : 0
+  const overpayment = monthly * Math.max(0, term)
+  return { monthly_payment: monthly, total_payment: Math.round(amount) + overpayment, overpayment }
+}
+
+export function creditSummary(repayment: Repayment, amount: number, term: number, rate: number): LoanSummary {
+  return repayment === 'REVOLVING' ? revolvingSummary(amount, term, rate) : loanSummary(amount, term, rate)
 }
 
 export function maxAmountForPayment(payment: number, term: number, rate: number): number {

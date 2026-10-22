@@ -154,6 +154,17 @@ export function FinancialsStep({ application, insights, nav }: FinancialsStepPro
   const expenses = watch('expenses_12m')
   const profit = watch('net_profit_12m')
   const debt = watch('monthly_debt_payments')
+  const employees = watch('employees_count')
+  const registered = application.company.employees_count
+  const employeesDiff =
+    Number.isFinite(employees) && employees > 0 && registered > 0 ? Math.round(((employees - registered) / registered) * 100) : 0
+  const lastYear = new Date().getFullYear() - 1
+  const employeesHint =
+    Math.abs(employeesDiff) >= 30 ? (
+      <span className={styles.hintWarning}>Расхождение с ФНС {Math.abs(employeesDiff)}%</span>
+    ) : (
+      `ФНС, ${lastYear}: ${registered} чел.`
+    )
 
   useAssistantScreen({
     screen: 'wizard.financials',
@@ -164,9 +175,16 @@ export function FinancialsStep({ application, insights, nav }: FinancialsStepPro
       expenses_12m: expenses,
       net_profit_12m: profit,
       monthly_debt_payments: debt,
+      employees_count: employees,
+      employees_registered: registered,
       prefilled_from_account: initial.fromAccount,
     },
-    suggestions: ['Где взять выручку за 12 месяцев?', 'Что считать платежами по кредитам?', 'Почему поля уже заполнены?'],
+    suggestions: [
+      'Где взять выручку за 12 месяцев?',
+      'Что считать платежами по кредитам?',
+      'Почему поля уже заполнены?',
+      'Какую численность сотрудников указывать?',
+    ],
   })
 
   const save = (after: () => void) => (values: FormValues) => {
@@ -257,9 +275,16 @@ export function FinancialsStep({ application, insights, nav }: FinancialsStepPro
           </section>
 
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>О компании</h3>
+            <h3 className={styles.sectionTitle}>Персонал и налоги</h3>
             <div className={styles.formRows}>
-              <Field label="Число сотрудников" error={errors.employees_count?.message} assist="employees_count" className={styles.fieldRow}>
+              <Field
+                label="Число сотрудников сейчас"
+                hint={employeesHint}
+                error={errors.employees_count?.message}
+                assist="employees_count"
+                className={styles.fieldRow}
+                help={<AskButton question="Какую численность сотрудников указывать?" />}
+              >
                 {(id) => (
                   <Controller
                     control={control}
@@ -279,6 +304,7 @@ export function FinancialsStep({ application, insights, nav }: FinancialsStepPro
               </Field>
               <Field
                 label="Система налогообложения"
+                hint={`ФНС: ${taxSystemLabels[application.company.tax_system]}`}
                 error={errors.tax_system?.message}
                 assist="tax_system"
                 className={styles.fieldRow}

@@ -1,6 +1,8 @@
 import { expect, type Page } from '@playwright/test'
 
 export async function resetDemo(page: Page) {
+  const response = await page.request.post('/api/demo/reset')
+  expect(response.status()).toBe(204)
   await page.goto('/login')
   await page.evaluate(() => {
     localStorage.clear()
@@ -11,10 +13,10 @@ export async function resetDemo(page: Page) {
 
 export async function login(page: Page, email: string) {
   await page.goto('/login')
-  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Электронная почта').fill(email)
   await page.getByLabel('Пароль').fill('demo')
   await page.getByRole('button', { name: 'Войти' }).click()
-  await expect(page).toHaveURL(email.startsWith('underwriter') ? /\/bank/ : /\/app/)
+  await expect(page).toHaveURL(email.endsWith('@bank.local') ? /\/bank/ : /\/app/)
 }
 
 export async function logout(page: Page) {

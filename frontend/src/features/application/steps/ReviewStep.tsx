@@ -98,7 +98,14 @@ export function ReviewStep({ application, insights, nav, mockFail }: ReviewStepP
   const [showErrors, setShowErrors] = useState(false)
   const [serverMissing, setServerMissing] = useState<MissingItem[]>([])
   const patch = usePatchApplication(application.id)
-  const metrics = computeMetrics(application.amount, application.term, application.product.base_rate, insights)
+  const revolving = application.product.repayment === 'REVOLVING'
+  const metrics = computeMetrics(
+    application.amount,
+    application.term,
+    application.product.base_rate,
+    insights,
+    application.product.repayment,
+  )
   const missing = clientMissing(application)
   const missingConsents = (Object.keys(CONSENT_LABELS) as (keyof Consents)[]).filter((key) => !consents[key])
 
@@ -176,9 +183,11 @@ export function ReviewStep({ application, insights, nav, mockFail }: ReviewStepP
         <SummaryBlock title="Сумма и срок" step="amount" nav={nav}>
           <Facts
             items={[
-              { label: 'Сумма', value: formatMoney(application.amount) },
-              { label: 'Срок', value: `${application.term} мес.` },
-              { label: 'Платёж в месяц', value: `≈ ${formatMoney(metrics.monthly)}` },
+              { label: revolving ? 'Лимит' : 'Сумма', value: formatMoney(application.amount) },
+              { label: revolving ? 'Срок лимита' : 'Срок', value: `${application.term} мес.` },
+              revolving
+                ? { label: 'Проценты в месяц', value: `до ${formatMoney(metrics.monthly)}` }
+                : { label: 'Платёж в месяц', value: `≈ ${formatMoney(metrics.monthly)}` },
               { label: 'Ставка', value: `от ${formatRate(application.product.base_rate)}` },
             ]}
           />

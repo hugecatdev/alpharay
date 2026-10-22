@@ -5,7 +5,7 @@ import { applicationsApi, companyApi, queryKeys, type ApplicationShort } from '@
 import { useAssistantScreen } from '@/features/assistant/AssistantProvider'
 import { AskButton } from '@/features/assistant/AskButton'
 import { useCurrentUser } from '@/features/auth/AuthProvider'
-import { formatBusinessAge, formatDate, formatTerm } from '@/shared/lib/dates'
+import { formatBusinessAge, formatDate, formatTerm, formatUpdated, plural } from '@/shared/lib/dates'
 import { legalFormLabels, taxSystemLabels } from '@/shared/lib/labels'
 import { formatMoney, formatRate } from '@/shared/lib/money'
 import { Badge, Card, EmptyState, ErrorState, PageHeader, ProgressBar, Skeleton, StatusBadge, StatusTile } from '@/shared/ui'
@@ -105,7 +105,7 @@ function CompanyContent() {
               <dd>{taxSystemLabels[data.tax_system]}</dd>
             </div>
             <div>
-              <dt>Сотрудников</dt>
+              <dt>Сотрудников по ФНС</dt>
               <dd className="tabular">{data.employees_count}</dd>
             </div>
           </dl>
@@ -174,7 +174,8 @@ function CompanyContent() {
               <span>Остаток долга</span>
               <strong className="tabular">{loans.length ? formatMoney(totalDebt) : 'Нет долга'}</strong>
               <span>
-                {loans.length} {loans.length === 1 ? 'действующий кредит' : 'действующих кредитов'} · {apps.length} заявок
+                {loans.length} {plural(loans.length, 'действующий кредит', 'действующих кредита', 'действующих кредитов')} ·{' '}
+                {apps.length} {plural(apps.length, 'заявка', 'заявки', 'заявок')}
               </span>
             </div>
             <ul className={styles.rows}>
@@ -212,7 +213,7 @@ function CompanyContent() {
                     </span>
                     <span className={styles.rowSide}>
                       <StatusBadge status={application.status} />
-                      <span className={styles.rowDate}>{formatDate(application.created_at)}</span>
+                      <span className={styles.rowDate}>{formatUpdated(application.updated_at)}</span>
                     </span>
                     <ChevronRight size={18} className={styles.chevron} aria-hidden />
                   </button>

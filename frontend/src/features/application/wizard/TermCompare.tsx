@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { CompanyInsights, Product } from '@/api'
 import { AskButton } from '@/features/assistant/AskButton'
 import { cn } from '@/shared/lib/cn'
@@ -7,14 +7,14 @@ import { FadeValue } from '@/shared/ui'
 import { computeMetrics, formatShare, type LoanMetrics } from './metrics'
 import styles from './TermCompare.module.css'
 
-const TERM_GRID = [3, 6, 9, 12, 18, 24, 36, 48, 60]
+const TERM_GRID = [3, 6, 9, 12, 18, 24, 36, 48, 60, 84, 120, 180]
 
 function termOptions(term: number, product: Product): number[] {
   const grid = TERM_GRID.filter((value) => value >= product.min_term && value <= product.max_term)
   const lower = [...grid].reverse().find((value) => value < term)
   const higher = grid.find((value) => value > term)
   const options = [lower, term, higher].filter((value): value is number => value !== undefined)
-  for (const value of grid) {
+  for (const value of [...grid].sort((a, b) => Math.abs(a - term) - Math.abs(b - term))) {
     if (options.length >= 3) break
     if (!options.includes(value)) options.push(value)
   }
@@ -41,9 +41,12 @@ export function TermCompare({
   insights?: CompanyInsights
   onSelect: (term: number) => void
 }) {
+  const [anchor, setAnchor] = useState(term)
+  const terms = useMemo(() => termOptions(anchor, product), [anchor, product])
+  if (!terms.includes(term)) setAnchor(term)
   const options = useMemo<Option[]>(
-    () => termOptions(term, product).map((value) => ({ term: value, metrics: computeMetrics(amount, value, rate, insights) })),
-    [amount, term, rate, product, insights],
+    () => terms.map((value) => ({ term: value, metrics: computeMetrics(amount, value, rate, insights, product.repayment) })),
+    [amount, terms, rate, insights, product.repayment],
   )
   const optimal = options.find((option) => option.metrics.riskLevel === 'low')?.term
 
@@ -82,7 +85,7 @@ export function TermCompare({
                 </b>
               </span>
               <span className={styles.row}>
-                <span>Нагрузка на поток</span>
+                <span>{option.metrics.existing > 0 ? 'Нагрузка с текущими' : 'Нагрузка на поток'}</span>
                 <b className={styles[option.metrics.riskLevel]}>{formatShare(option.metrics.share)}</b>
               </span>
             </button>

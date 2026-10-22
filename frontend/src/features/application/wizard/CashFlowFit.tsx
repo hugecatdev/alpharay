@@ -33,10 +33,11 @@ export function CashFlowFit({ metrics }: { metrics: LoanMetrics }) {
         <div className={styles.titles}>
           <h3>
             Впишется ли платёж
-            <AskButton question="Что такое свободный денежный поток и почему платёж должен в него вписываться?" />
+            <AskButton question="Что такое чистый денежный поток и почему платёж должен в него вписываться?" />
           </h3>
           <span className={styles.caption}>
-            Свободный денежный поток по месяцам (поступления минус списания по счёту) против платежа{' '}
+            Чистый поток по месяцам — поступления минус списания по счёту
+            {metrics.existing > 0 ? ', уже после текущих платежей по кредитам,' : ''} — против нового платежа{' '}
             {formatMoneyShort(monthly)}
           </span>
         </div>

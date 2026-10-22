@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
-import { assistantApi, type AssistantContext, type AssistantFieldValue, type AssistantMessage } from '@/api'
+import { assistantApi, type AssistantAction, type AssistantContext, type AssistantFieldValue, type AssistantMessage } from '@/api'
 import { useAuth } from '@/features/auth/AuthProvider'
 import { useAssistantEnabled } from '@/shared/hooks/useConfig'
 import { useLocalStorage } from '@/shared/hooks/useLocalStorage'
@@ -11,7 +11,10 @@ export const DEFAULT_SUGGESTIONS = ['Какой продукт мне подхо
 
 export interface ChatItem extends AssistantMessage {
   failed?: boolean
+  applied?: boolean
 }
+
+export type FormFiller = (action: AssistantAction) => boolean
 
 export interface ScreenContext {
   screen: string
@@ -34,6 +37,7 @@ interface AssistantState {
   setScreen: (screen: ScreenContext) => void
   highlight: (target: string) => void
   reset: () => void
+  registerFiller: (filler: FormFiller | null) => void
 }
 
 const AssistantStateContext = createContext<AssistantState | null>(null)
@@ -64,9 +68,22 @@ function localMessage(role: 'user' | 'assistant', content: string, failed?: bool
     content,
     hints: [],
     suggestions: [],
+    actions: [],
     created_at: new Date().toISOString(),
     failed,
   }
+}
+
+function applyActions(message: AssistantMessage, filler: FormFiller | null): ChatItem {
+  if (!message.actions.length) return message
+  const applied = filler !== null && message.actions.every((action) => filler(action))
+  if (applied) {
+    for (const action of message.actions) {
+      if (action.amount !== null) highlightElement('amount')
+      if (action.term !== null) highlightElement('term')
+    }
+  }
+  return { ...message, applied }
 }
 
 export function highlightElement(target: string) {
@@ -88,6 +105,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const [sending, setSending] = useState(false)
   const [screen, setScreenState] = useState<ScreenContext>(DEFAULT_SCREEN)
   const sessionRef = useRef<string | null>(readSession())
+  const fillerRef = useRef<FormFiller | null>(null)
   const screenRef = useRef(screen)
   const pathRef = useRef(location.pathname)
   screenRef.current = screen
@@ -141,12 +159,13 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         .then((response) => {
           sessionRef.current = response.session_id
           writeSession(response.session_id)
-          setMessages((list) => [...list, response.message])
+          const reply = applyActions(response.message, fillerRef.current)
+          setMessages((list) => [...list, reply])
         })
         .catch(() => {
           setMessages((list) => [
             ...list,
-            localMessage('assistant', 'Рэй временно недоступен, все действия доступны в кабинете.', true),
+            localMessage('assistant', 'Рэй временно недоступен. Продолжайте на экране слева — все действия работают без ассистента.', true),
           ])
         })
         .finally(() => setSending(false))
@@ -172,6 +191,10 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     setMessages([])
   }, [])
 
+  const registerFiller = useCallback((filler: FormFiller | null) => {
+    fillerRef.current = filler
+  }, [])
+
   const suggestions = useMemo(() => {
     const last = [...messages].reverse().find((item) => item.role === 'assistant' && !item.failed)
     if (last && last.suggestions.length) return last.suggestions
@@ -192,8 +215,9 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       setScreen,
       highlight: highlightElement,
       reset,
+      registerFiller,
     }),
-    [enabled, open, setOpen, messages, sending, screen, suggestions, send, ask, setScreen, reset],
+    [enabled, open, setOpen, messages, sending, screen, suggestions, send, ask, setScreen, reset, registerFiller],
   )
 
   return <AssistantStateContext.Provider value={value}>{children}</AssistantStateContext.Provider>
@@ -203,6 +227,14 @@ export function useAssistant(): AssistantState {
   const context = useContext(AssistantStateContext)
   if (!context) throw new Error('useAssistant must be used within AssistantProvider')
   return context
+}
+
+export function useAssistantFiller(filler: FormFiller) {
+  const { registerFiller } = useAssistant()
+  useEffect(() => {
+    registerFiller(filler)
+    return () => registerFiller(null)
+  }, [filler, registerFiller])
 }
 
 export function useAssistantScreen(screen: ScreenContext) {

@@ -1,5 +1,5 @@
 import { test } from '@playwright/test'
-import { login, resetDemo, shot } from './helpers'
+import { login, logout, resetDemo, shot } from './helpers'
 
 test('screen tour', async ({ page }) => {
   await resetDemo(page)
@@ -25,4 +25,16 @@ test('screen tour', async ({ page }) => {
   await page.goto(page.url().replace(/step=[a-z]+/, 'step=amount'))
   await page.waitForLoadState('networkidle')
   await shot(page, '09-wizard-amount')
+  await page.goto('/app/applications/new')
+  await page.getByRole('button', { name: /^Покрытие кассовых разрывов/ }).click()
+  await page.locator('[data-assist="product-OVERDRAFT"]').click()
+  await page.getByRole('button', { name: 'Перейти к сумме и сроку' }).click()
+  await page.waitForURL(/step=amount/)
+  await page.waitForLoadState('networkidle')
+  await shot(page, '10-wizard-overdraft')
+  await logout(page)
+  await login(page, 'underwriter@bank.local')
+  await page.goto('/bank/stats')
+  await page.waitForLoadState('networkidle')
+  await shot(page, '24-bank-stats')
 })

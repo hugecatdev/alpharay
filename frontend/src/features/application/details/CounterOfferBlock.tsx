@@ -10,11 +10,14 @@ import { Alert, Button } from '@/shared/ui'
 import { useApplicationCache } from './useApplication'
 import styles from './CounterOfferBlock.module.css'
 
+type Better = 'lower' | 'higher' | 'none'
+
 interface Row {
   label: string
   requested: number
   offered: number
   format: (value: number) => string
+  better: Better
   emphasis?: boolean
 }
 
@@ -25,14 +28,15 @@ function overpayment(amount: number, term: number, monthly: number) {
 function rowsFor(offer: Offer): Row[] {
   const { requested } = offer
   return [
-    { label: 'Сумма', requested: requested.amount, offered: offer.amount, format: formatMoney },
-    { label: 'Срок', requested: requested.term, offered: offer.term, format: formatTerm },
-    { label: 'Ставка', requested: requested.rate, offered: offer.rate, format: formatRate },
+    { label: 'Сумма', requested: requested.amount, offered: offer.amount, format: formatMoney, better: 'higher' },
+    { label: 'Срок', requested: requested.term, offered: offer.term, format: formatTerm, better: 'none' },
+    { label: 'Ставка', requested: requested.rate, offered: offer.rate, format: formatRate, better: 'lower' },
     {
       label: 'Платёж в месяц',
       requested: requested.monthly_payment,
       offered: offer.monthly_payment,
       format: formatMoney,
+      better: 'lower',
       emphasis: true,
     },
     {
@@ -40,6 +44,7 @@ function rowsFor(offer: Offer): Row[] {
       requested: overpayment(requested.amount, requested.term, requested.monthly_payment),
       offered: overpayment(offer.amount, offer.term, offer.monthly_payment),
       format: formatMoney,
+      better: 'lower',
     },
   ]
 }
@@ -48,8 +53,10 @@ function Delta({ row }: { row: Row }) {
   const diff = row.offered - row.requested
   if (Math.abs(diff) < 0.005) return <span className={styles.same}>без изменений</span>
   const sign = diff > 0 ? '+' : '−'
+  const tone =
+    row.better === 'none' ? styles.deltaNeutral : (diff < 0) === (row.better === 'lower') ? styles.deltaGood : styles.deltaBad
   return (
-    <span className={styles.delta}>
+    <span className={cn(styles.delta, tone)}>
       {sign}
       {row.format(Math.abs(diff))}
     </span>

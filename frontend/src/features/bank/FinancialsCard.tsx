@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import type { BankApplication, Discrepancy, Financials } from '@/api'
-import { loanSummary } from '@/shared/lib/annuity'
+import { creditSummary } from '@/shared/lib/annuity'
 import { cn } from '@/shared/lib/cn'
 import { taxSystemLabels } from '@/shared/lib/labels'
 import { formatMoney, formatNumber, formatPercent } from '@/shared/lib/money'
@@ -75,7 +75,12 @@ export function FinancialsCard({ application }: { application: BankApplication }
   const byField = new Map(application.discrepancies.map((item) => [item.field, item]))
   const extra = application.discrepancies.filter((item) => !list.some((row) => row.field === item.field))
   const monthlyRevenue = financials.revenue_12m / 12
-  const newPayment = loanSummary(application.amount, application.term, application.product.base_rate).monthly_payment
+  const newPayment = creditSummary(
+    application.product.repayment,
+    application.amount,
+    application.term,
+    application.product.base_rate,
+  ).monthly_payment
   const debtLoad = monthlyRevenue > 0 ? ((financials.monthly_debt_payments + newPayment) / monthlyRevenue) * 100 : 0
   const margin = financials.revenue_12m > 0 ? (financials.net_profit_12m / financials.revenue_12m) * 100 : 0
   const amountToRevenue = financials.revenue_12m > 0 ? (application.amount / financials.revenue_12m) * 100 : 0
@@ -93,7 +98,7 @@ export function FinancialsCard({ application }: { application: BankApplication }
       }
     >
       <div className={styles.ratios}>
-        <Stat size="sm" label="Долговая нагрузка с новым кредитом" value={formatPercent(debtLoad)} tone={debtLoad > 50 ? 'accent' : 'default'} sub="платежи / выручка в мес" />
+        <Stat size="sm" label="Платежи к выручке с новым кредитом" value={formatPercent(debtLoad)} tone={debtLoad > 50 ? 'accent' : 'default'} sub="все платежи / выручка в мес" />
         <Stat size="sm" label="Рентабельность" value={formatPercent(margin, 1)} tone={margin < 5 ? 'accent' : 'default'} sub="прибыль / выручка" />
         <Stat size="sm" label="Сумма к выручке" value={formatPercent(amountToRevenue)} tone={amountToRevenue > 50 ? 'accent' : 'default'} sub="запрошено / выручка за год" />
       </div>

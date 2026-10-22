@@ -1,7 +1,7 @@
 import { ArrowUpRight, ChevronRight, FilePlus2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { ApplicationShort } from '@/api'
-import { formatRelative, formatTerm } from '@/shared/lib/dates'
+import { formatTerm, formatUpdated } from '@/shared/lib/dates'
 import { formatMoney } from '@/shared/lib/money'
 import { statusGroup, type StatusGroup } from '@/shared/lib/statusMeta'
 import { ButtonLink, Card, EmptyState, Skeleton, StatusBadge, StatusTile } from '@/shared/ui'
@@ -69,7 +69,7 @@ export function ApplicationsCard({ applications, loading }: { applications: Appl
                   </span>
                   <span className={styles.rowSide}>
                     <StatusBadge status={application.status} />
-                    <span className={styles.rowDate}>{formatRelative(application.updated_at)}</span>
+                    <span className={styles.rowDate}>{formatUpdated(application.updated_at)}</span>
                   </span>
                   <ChevronRight size={18} className={styles.rowChevron} aria-hidden />
                 </Link>

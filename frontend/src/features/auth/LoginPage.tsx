@@ -6,12 +6,13 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { ApiError } from '@/api'
 import { homeFor } from '@/app/guards'
+import { useConfig } from '@/shared/hooks/useConfig'
 import { Alert, Button, Field, Input, Logo } from '@/shared/ui'
 import { useAuth } from './AuthProvider'
 import styles from './LoginPage.module.css'
 
 const schema = z.object({
-  email: z.string().trim().min(1, 'Введите email').email('Проверьте формат email'),
+  email: z.string().trim().min(1, 'Введите электронную почту').email('Проверьте адрес электронной почты'),
   password: z.string().min(1, 'Введите пароль'),
 })
 
@@ -22,11 +23,20 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
+  const config = useConfig()
+  const demoAccounts = config.data?.demo_accounts ?? []
+  const demoPassword = config.data?.demo_password ?? null
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({ resolver: zodResolver(schema), defaultValues: { email: '', password: '' } })
+
+  function fillDemo(email: string) {
+    setValue('email', email, { shouldValidate: true })
+    if (demoPassword) setValue('password', demoPassword, { shouldValidate: true })
+  }
 
   const from = (location.state as { from?: string } | null)?.from
 
@@ -37,7 +47,7 @@ export function LoginPage() {
       const home = homeFor(user.role)
       navigate(from && from.startsWith(home) ? from : home, { replace: true })
     } catch (caught) {
-      setError(caught instanceof ApiError && caught.status === 401 ? 'Неверный email или пароль' : 'Не удалось войти. Попробуйте ещё раз.')
+      setError(caught instanceof ApiError && caught.status === 401 ? 'Неверная почта или пароль' : 'Не удалось войти. Попробуйте ещё раз.')
     }
   }
 
@@ -51,7 +61,7 @@ export function LoginPage() {
             <p>Кредиты для бизнеса — от заявки до зачисления</p>
           </div>
           {error && <Alert tone="danger">{error}</Alert>}
-          <Field label="Email" error={errors.email?.message}>
+          <Field label="Электронная почта" error={errors.email?.message}>
             {(id) => (
               <Input
                 id={id}
@@ -79,6 +89,29 @@ export function LoginPage() {
             Войти
           </Button>
         </form>
+        {demoAccounts.length > 0 && (
+          <section className={styles.demo} aria-label="Демо-доступ">
+            <div className={styles.demoHead}>
+              <strong>Демо-доступ</strong>
+              {demoPassword && (
+                <span>
+                  пароль у всех — <code>{demoPassword}</code>
+                </span>
+              )}
+            </div>
+            <ul className={styles.demoList}>
+              {demoAccounts.map((account) => (
+                <li key={account.email}>
+                  <button type="button" className={styles.demoItem} onClick={() => fillDemo(account.email)}>
+                    <span className={styles.demoTitle}>{account.title}</span>
+                    <span className={styles.demoDescription}>{account.description}</span>
+                    <span className={styles.demoEmail}>{account.email}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <p className={styles.footer}>© {new Date().getFullYear()} AlphaRay</p>
       </main>
     </div>

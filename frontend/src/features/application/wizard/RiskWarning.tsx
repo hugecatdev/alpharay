@@ -2,7 +2,7 @@ import { ShieldAlert } from 'lucide-react'
 import { AskButton } from '@/features/assistant/AskButton'
 import { cn } from '@/shared/lib/cn'
 import { formatMoney, formatPercent } from '@/shared/lib/money'
-import { formatShare, type LoanMetrics } from './metrics'
+import { COMFORT_LOAD, HIGH_LOAD, formatShare, type LoanMetrics } from './metrics'
 import styles from './RiskWarning.module.css'
 
 const leads: Record<LoanMetrics['riskLevel'], string> = {
@@ -13,15 +13,16 @@ const leads: Record<LoanMetrics['riskLevel'], string> = {
 
 function toneOf(share: number | null): 'good' | 'mid' | 'bad' | undefined {
   if (share === null) return undefined
-  return share < 0.4 ? 'good' : share < 0.7 ? 'mid' : 'bad'
+  return share <= COMFORT_LOAD ? 'good' : share <= HIGH_LOAD ? 'mid' : 'bad'
+}
+
+function reserveTone(reserve: number): 'good' | 'mid' | 'bad' {
+  return reserve >= 0.2 ? 'good' : reserve >= 0.1 ? 'mid' : 'bad'
 }
 
 export function RiskWarning({ metrics }: { metrics: LoanMetrics }) {
-  const { riskLevel } = metrics
-  const share =
-    metrics.share === null ? null : metrics.share >= 1 ? 'больше 100%' : formatShare(metrics.share)
-  const afterDrop =
-    metrics.shareAfterDrop === null ? null : metrics.shareAfterDrop >= 1 ? 'не хватит' : formatShare(metrics.shareAfterDrop)
+  const { riskLevel, reserve } = metrics
+  const share = metrics.share === null ? null : formatShare(metrics.share)
   return (
     <section className={cn(styles.warning, styles[riskLevel])} data-assist="risk-warning" role="note" aria-label="Предупреждение о рисках">
       <span className={styles.eyebrow}>
@@ -33,25 +34,39 @@ export function RiskWarning({ metrics }: { metrics: LoanMetrics }) {
 
       <div className={styles.facts}>
         <div>
-          <strong className="tabular">{formatMoney(metrics.overpayment)}</strong>
-          <span>переплата за весь срок — {formatPercent(metrics.overpaymentShare * 100)} от суммы</span>
+          {metrics.revolving ? (
+            <>
+              <strong className="tabular">{formatMoney(metrics.monthly)}</strong>
+              <span>процентов в месяц, если использовать весь лимит; без использования — 0 ₽</span>
+            </>
+          ) : (
+            <>
+              <strong className="tabular">{formatMoney(metrics.overpayment)}</strong>
+              <span>переплата за весь срок — {formatPercent(metrics.overpaymentShare * 100)} от суммы</span>
+            </>
+          )}
         </div>
         <div>
           <strong className={cn('tabular', styles[toneOf(metrics.share) ?? 'neutral'])}>{share ?? '—'}</strong>
           <span>
-            {metrics.avgFcf !== null
-              ? `свободного потока уйдёт на платёж (${formatMoney(Math.max(0, metrics.avgFcf))} в мес.)`
+            {metrics.flow !== null
+              ? `денежного потока уйдёт на все кредиты${metrics.existing > 0 ? ', включая текущие' : ''} (поток ${formatMoney(Math.max(0, metrics.flow))} в мес.)`
               : 'нет оборотов по счёту — сравните платёж с прибылью сами'}
           </span>
         </div>
-        {afterDrop && (
+        {reserve !== null && (
           <div>
-            <strong className={cn('tabular', styles[toneOf(metrics.shareAfterDrop) ?? 'neutral'])}>{afterDrop}</strong>
-            <span>{afterDrop === 'не хватит' ? 'свободного потока, если выручка упадёт на 20%' : 'нагрузка, если выручка упадёт на 20%'}</span>
+            <strong className={cn('tabular', styles[reserveTone(reserve)])}>
+              {reserve > 0 ? formatPercent(reserve * 100) : 'нет запаса'}
+            </strong>
+            <span>
+              {reserve > 0
+                ? 'на столько может упасть выручка, прежде чем поток перестанет покрывать новый платёж'
+                : 'уже сейчас средний поток не покрывает новый платёж'}
+            </span>
           </div>
         )}
       </div>
-
       <p className={styles.footnote}>
         При просрочке начисляются пени, информация попадает в кредитную историю, и следующие кредиты станут дороже или недоступны.
       </p>

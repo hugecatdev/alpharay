@@ -1,6 +1,10 @@
-import type { CompanyInsights, Product } from '@/api'
-import { annuityPayment, loanSummary, maxAmountForPayment } from '@/shared/lib/annuity'
+import type { CompanyInsights, Product, Repayment } from '@/api'
+import { annuityPayment, creditSummary, maxAmountForPayment } from '@/shared/lib/annuity'
 import { formatMoneyShort, formatPercent } from '@/shared/lib/money'
+
+export const COMFORT_LOAD = 0.4
+export const HIGH_LOAD = 0.7
+export const OVERDRAFT_INFLOW_SHARE = 0.5
 
 export type RiskLevel = 'low' | 'medium' | 'high'
 export type CheckLevel = 'ok' | 'warn' | 'bad'
@@ -11,15 +15,19 @@ export interface FcfMonth {
 }
 
 export interface LoanMetrics {
+  revolving: boolean
   monthly: number
   overpayment: number
   total: number
   overpaymentShare: number
+  existing: number
   avgFcf: number | null
+  flow: number | null
   avgInflow: number | null
   annualInflow: number | null
   share: number | null
-  shareAfterDrop: number | null
+  existingShare: number | null
+  reserve: number | null
   fcf: FcfMonth[]
   fitCount: number
   badMonths: string[]
@@ -43,30 +51,45 @@ export function lastTwelve(insights: CompanyInsights | undefined): FcfMonth[] {
   return insights.turnover.slice(-12).map((month) => ({ month: month.month, value: month.inflow - month.outflow }))
 }
 
-export function computeMetrics(amount: number, term: number, rate: number, insights?: CompanyInsights): LoanMetrics {
-  const summary = loanSummary(amount, term, rate)
+export function existingPayments(insights: CompanyInsights | undefined): number {
+  return insights ? insights.loans.reduce((sum, loan) => sum + loan.monthly_payment, 0) : 0
+}
+
+export function computeMetrics(
+  amount: number,
+  term: number,
+  rate: number,
+  insights?: CompanyInsights,
+  repayment: Repayment = 'ANNUITY',
+): LoanMetrics {
+  const summary = creditSummary(repayment, amount, term, rate)
   const fcf = lastTwelve(insights)
   const months = insights?.turnover.slice(-12) ?? []
   const annualInflow = months.length ? months.reduce((sum, month) => sum + month.inflow, 0) : null
   const avgInflow = annualInflow !== null && months.length ? annualInflow / months.length : null
-  const avgFcf = insights
-    ? insights.avg_free_cash_flow || (fcf.length ? fcf.reduce((sum, month) => sum + month.value, 0) / fcf.length : null)
-    : null
-  const share = avgFcf && avgFcf > 0 ? summary.monthly_payment / avgFcf : avgFcf !== null ? Infinity : null
-  const droppedFcf = avgFcf !== null && avgInflow !== null ? avgFcf - avgInflow * 0.2 : null
-  const shareAfterDrop = droppedFcf === null ? null : droppedFcf > 0 ? summary.monthly_payment / droppedFcf : Infinity
+  const avgFcf = insights && fcf.length ? insights.avg_free_cash_flow : null
+  const existing = existingPayments(insights)
+  const flow = avgFcf === null ? null : avgFcf + existing
+  const share = flow === null ? null : flow > 0 ? (existing + summary.monthly_payment) / flow : Infinity
+  const existingShare = flow === null ? null : flow > 0 ? existing / flow : Infinity
+  const reserve =
+    avgFcf !== null && avgInflow ? Math.max(0, (avgFcf - summary.monthly_payment) / avgInflow) : null
   const badMonths = fcf.filter((month) => month.value < summary.monthly_payment).map((month) => month.month)
-  const riskLevel: RiskLevel = share === null ? 'medium' : share < 0.4 ? 'low' : share < 0.7 ? 'medium' : 'high'
+  const riskLevel: RiskLevel = share === null ? 'medium' : share <= COMFORT_LOAD ? 'low' : share <= HIGH_LOAD ? 'medium' : 'high'
   return {
+    revolving: repayment === 'REVOLVING',
     monthly: summary.monthly_payment,
     overpayment: summary.overpayment,
     total: summary.total_payment,
     overpaymentShare: amount > 0 ? summary.overpayment / amount : 0,
+    existing,
     avgFcf,
+    flow,
     avgInflow,
     annualInflow,
     share,
-    shareAfterDrop,
+    existingShare,
+    reserve,
     fcf,
     fitCount: fcf.length - badMonths.length,
     badMonths,
@@ -125,7 +148,7 @@ export function runPrecheck(
   product: Product,
   insights: CompanyInsights | undefined,
 ): PrecheckResult {
-  const metrics = computeMetrics(amount, term, rate, insights)
+  const metrics = computeMetrics(amount, term, rate, insights, product.repayment)
   const items: CheckItem[] = []
 
   if (insights && insights.pre_approved_limit > 0 && amount > insights.pre_approved_limit) {
@@ -134,7 +157,7 @@ export function runPrecheck(
       id: 'limit',
       level: 'warn',
       text: `Сумма выше предварительного лимита ${formatMoneyShort(insights.pre_approved_limit)}`,
-      hint: 'Лимит посчитан по оборотам счёта. Скорее всего, банк предложит меньшую сумму или попросит обеспечение.',
+      hint: 'Лимит посчитан по оборотам счёта с учётом текущих кредитов. Скорее всего, банк предложит меньшую сумму или попросит обеспечение.',
       fix: target < amount ? { label: `Уменьшить до ${formatMoneyShort(target)}`, amount: target } : undefined,
     })
   }
@@ -148,30 +171,52 @@ export function runPrecheck(
     })
   }
 
-  const avgFcf = metrics.avgFcf
-  if (avgFcf !== null && metrics.share !== null && metrics.share > 0.5) {
-    const bad = metrics.share > 0.8
-    const fitTerm = avgFcf > 0 ? termFor(amount, rate, product, term, (payment) => payment <= avgFcf * 0.5) : null
-    const capAmount = avgFcf > 0 ? floor50k(maxAmountForPayment(avgFcf * 0.5, term, rate)) : 0
-    const fix: CheckFix | undefined = fitTerm
-      ? { label: `Увеличить срок до ${fitTerm} мес.`, term: fitTerm }
-      : capAmount >= product.min_amount && capAmount < amount
-        ? { label: `Уменьшить сумму до ${formatMoneyShort(capAmount)}`, amount: capAmount }
-        : undefined
+  const flow = metrics.flow
+  if (flow !== null && metrics.share !== null && metrics.share > COMFORT_LOAD) {
+    const bad = metrics.share > HIGH_LOAD
+    const room = flow * COMFORT_LOAD - metrics.existing
+    let fix: CheckFix | undefined
+    if (room > 0 && metrics.revolving) {
+      const capAmount = floor50k((room * 1200) / rate)
+      if (capAmount >= product.min_amount && capAmount < amount) fix = { label: `Уменьшить лимит до ${formatMoneyShort(capAmount)}`, amount: capAmount }
+    } else if (room > 0) {
+      const fitTerm = termFor(amount, rate, product, term, (payment) => payment <= room)
+      const capAmount = floor50k(maxAmountForPayment(room, term, rate))
+      fix = fitTerm
+        ? { label: `Увеличить срок до ${fitTerm} мес.`, term: fitTerm }
+        : capAmount >= product.min_amount && capAmount < amount
+          ? { label: `Уменьшить сумму до ${formatMoneyShort(capAmount)}`, amount: capAmount }
+          : undefined
+    }
+    const existingNote =
+      metrics.existing > 0 ? ` Из них текущие кредиты — ${formatShare(metrics.existingShare)}.` : ''
     items.push({
       id: 'load',
       level: bad ? 'bad' : 'warn',
-      text: bad
-        ? `Платёж больше 80% свободного потока (${formatMoneyShort(avgFcf)} в мес.)`
-        : `Платёж больше половины свободного потока (${formatMoneyShort(avgFcf)} в мес.)`,
-      hint: bad
-        ? 'Почти все свободные деньги будут уходить на кредит — любой спад выручки приведёт к просрочке.'
-        : 'На непредвиденные расходы останется немного — держите резерв хотя бы на 2–3 платежа.',
+      text: `Платежи по всем кредитам займут ${formatShare(metrics.share)} денежного потока (${formatMoneyShort(flow)} в мес.)`,
+      hint:
+        (room <= 0
+          ? 'Текущие кредиты уже занимают комфортные 40% потока — новый кредит разумнее брать после погашения части долга.'
+          : bad
+            ? 'Почти все свободные деньги будут уходить на кредиты — любой спад выручки приведёт к просрочке.'
+            : 'Комфортно — до 40%. На непредвиденные расходы останется немного — держите резерв хотя бы на 2–3 платежа.') +
+        existingNote,
       fix,
     })
   }
 
-  if (metrics.annualInflow !== null && amount > metrics.annualInflow * 0.5) {
+  if (metrics.revolving && metrics.avgInflow !== null && amount > metrics.avgInflow * OVERDRAFT_INFLOW_SHARE) {
+    const target = clamp(floor50k(metrics.avgInflow * OVERDRAFT_INFLOW_SHARE), product.min_amount, product.max_amount)
+    items.push({
+      id: 'inflow',
+      level: 'warn',
+      text: 'Лимит больше половины среднемесячных поступлений на счёт',
+      hint: 'Овердрафт гасится поступлениями. Банк обычно ставит лимит до 30–50% месячного оборота по счёту.',
+      fix: target < amount ? { label: `Уменьшить до ${formatMoneyShort(target)}`, amount: target } : undefined,
+    })
+  }
+
+  if (!metrics.revolving && metrics.annualInflow !== null && amount > metrics.annualInflow * 0.5) {
     const target = clamp(floor50k(metrics.annualInflow * 0.5), product.min_amount, product.max_amount)
     items.push({
       id: 'revenue',
@@ -182,14 +227,19 @@ export function runPrecheck(
     })
   }
 
-  if (metrics.fcf.length && metrics.badMonths.length > 3 && !items.some((item) => item.id === 'load' && item.fix?.term)) {
+  if (
+    !metrics.revolving &&
+    metrics.fcf.length &&
+    metrics.badMonths.length > 3 &&
+    !items.some((item) => item.id === 'load' && item.fix?.term)
+  ) {
     const values = metrics.fcf.map((month) => month.value)
     const fitTerm = termFor(amount, rate, product, term, (payment) => values.filter((value) => value < payment).length <= 3)
     items.push({
       id: 'months',
       level: 'warn',
-      text: `Платёж не покрывается потоком в ${metrics.badMonths.length} мес. из ${metrics.fcf.length}`,
-      hint: 'В эти месяцы платить придётся из резервов или других доходов.',
+      text: `Новый платёж не покрывается потоком в ${metrics.badMonths.length} мес. из ${metrics.fcf.length}`,
+      hint: 'В эти месяцы после текущих платежей денег на новый не хватит — платить придётся из резервов.',
       fix: fitTerm ? { label: `Увеличить срок до ${fitTerm} мес.`, term: fitTerm } : undefined,
     })
   }
@@ -204,10 +254,15 @@ export function runPrecheck(
 
 export function defaultAmount(product: Product, insights?: CompanyInsights): number {
   const fallback = Math.max(product.min_amount, 1_000_000)
-  if (!insights) return clamp(round50k(fallback), product.min_amount, product.max_amount)
-  const comfortable = insights.avg_free_cash_flow > 0
-    ? maxAmountForPayment(insights.avg_free_cash_flow * 0.4, defaultTerm(product), product.base_rate)
-    : fallback
+  if (!insights || !insights.turnover.length) return clamp(round50k(fallback), product.min_amount, product.max_amount)
+  const metrics = computeMetrics(0, defaultTerm(product), product.base_rate, insights, product.repayment)
+  const room = (metrics.flow ?? 0) * COMFORT_LOAD - metrics.existing
+  const comfortable =
+    room <= 0
+      ? product.min_amount
+      : product.repayment === 'REVOLVING'
+        ? Math.min((room * 1200) / product.base_rate, (metrics.avgInflow ?? 0) * 0.3)
+        : maxAmountForPayment(room, defaultTerm(product), product.base_rate)
   const limit = insights.pre_approved_limit > 0 ? insights.pre_approved_limit : comfortable
   return clamp(floor50k(Math.min(limit, comfortable)), product.min_amount, product.max_amount)
 }

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { ArrowUpRight, CheckCircle2, Coffee, FilePlus2, FileSignature, Hourglass, PartyPopper, RefreshCcw } from 'lucide-react'
 import type { Application } from '@/api'
 import { AskButton } from '@/features/assistant/AskButton'
-import { loanSummary } from '@/shared/lib/annuity'
+import { creditSummary } from '@/shared/lib/annuity'
 import { formatDate, formatTerm } from '@/shared/lib/dates'
 import { formatMoney, formatRate } from '@/shared/lib/money'
 import { Alert, ButtonLink, Card, KeyValueList, Spinner } from '@/shared/ui'
@@ -28,29 +28,43 @@ function ApprovedBlock({ application }: { application: Application }) {
   const amount = offer?.amount ?? application.amount
   const term = offer?.term ?? application.term
   const rate = offer?.rate ?? application.product.base_rate
-  const summary = loanSummary(amount, term, rate)
+  const revolving = application.product.repayment === 'REVOLVING'
+  const summary = creditSummary(application.product.repayment, amount, term, rate)
   const monthly = offer?.monthly_payment ?? summary.monthly_payment
-  const overpayment = Math.max(0, Math.round(monthly * term - amount))
+  const overpayment = revolving ? summary.overpayment : Math.max(0, Math.round(monthly * term - amount))
 
   return (
     <div className={styles.approved}>
       <div className={styles.approvedHero}>
-        <span className={styles.approvedLabel}>Платёж в месяц</span>
+        <span className={styles.approvedLabel}>{revolving ? 'Проценты в месяц при полном использовании' : 'Платёж в месяц'}</span>
         <strong className={styles.approvedValue}>{formatMoney(monthly)}</strong>
         <span className={styles.approvedSub}>
-          {formatMoney(amount)} на {formatTerm(term)} под {formatRate(rate)}
+          {revolving
+            ? `Лимит ${formatMoney(amount)} на ${formatTerm(term)} под ${formatRate(rate)} — только на использованную сумму`
+            : `${formatMoney(amount)} на ${formatTerm(term)} под ${formatRate(rate)}`}
         </span>
       </div>
       <KeyValueList
         columns={2}
-        items={[
-          { label: 'Сумма', value: formatMoney(amount) },
-          { label: 'Срок', value: formatTerm(term) },
-          { label: 'Ставка', value: formatRate(rate) },
-          { label: 'Переплата', value: formatMoney(overpayment) },
-          { label: 'Всего к возврату', value: formatMoney(monthly * term) },
-          { label: 'Действует до', value: offer ? formatDate(offer.valid_until) : '—' },
-        ]}
+        items={
+          revolving
+            ? [
+                { label: 'Лимит', value: formatMoney(amount) },
+                { label: 'Срок действия', value: formatTerm(term) },
+                { label: 'Ставка', value: formatRate(rate) },
+                { label: 'Погашение', value: 'поступлениями на счёт' },
+                { label: 'Каждый транш', value: 'до 60 дней' },
+                { label: 'Действует до', value: offer ? formatDate(offer.valid_until) : '—' },
+              ]
+            : [
+                { label: 'Сумма', value: formatMoney(amount) },
+                { label: 'Срок', value: formatTerm(term) },
+                { label: 'Ставка', value: formatRate(rate) },
+                { label: 'Переплата', value: formatMoney(overpayment) },
+                { label: 'Всего к возврату', value: formatMoney(monthly * term) },
+                { label: 'Действует до', value: offer ? formatDate(offer.valid_until) : '—' },
+              ]
+        }
       />
       <div className={styles.row}>
         <ButtonLink to={`/app/applications/${application.id}/sign`} size="lg" iconRight={<FileSignature size={18} />}>

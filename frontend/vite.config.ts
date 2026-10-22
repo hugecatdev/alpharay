@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
-      proxy: env.VITE_API_MODE === 'mock' ? undefined : { '/api': { target, changeOrigin: true } },
+      proxy: { '/api': { target, changeOrigin: true } },
     },
   }
 })

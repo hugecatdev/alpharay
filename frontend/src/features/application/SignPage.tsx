@@ -5,7 +5,7 @@ import { ArrowUpRight, CheckCircle2, FileSignature, KeyRound, LayoutGrid } from 
 import { ApiError, applicationsApi, queryKeys, type Application, type ApplicationStatus } from '@/api'
 import { AskButton } from '@/features/assistant/AskButton'
 import { useAssistantScreen } from '@/features/assistant/AssistantProvider'
-import { loanSummary } from '@/shared/lib/annuity'
+import { creditSummary } from '@/shared/lib/annuity'
 import { formatTerm } from '@/shared/lib/dates'
 import { formatMoney, formatRate } from '@/shared/lib/money'
 import {
@@ -54,13 +54,19 @@ function Terms({ application }: { application: Application }) {
   const amount = offer?.amount ?? application.amount
   const term = offer?.term ?? application.term
   const rate = offer?.rate ?? application.product.base_rate
-  const monthly = offer?.monthly_payment ?? loanSummary(amount, term, rate).monthly_payment
+  const revolving = application.product.repayment === 'REVOLVING'
+  const monthly = offer?.monthly_payment ?? creditSummary(application.product.repayment, amount, term, rate).monthly_payment
   return (
     <div className={styles.terms}>
-      <Stat label="Сумма" value={formatMoney(amount)} size="md" />
-      <Stat label="Срок" value={formatTerm(term)} size="md" />
+      <Stat label={revolving ? 'Лимит' : 'Сумма'} value={formatMoney(amount)} size="md" />
+      <Stat label={revolving ? 'Срок лимита' : 'Срок'} value={formatTerm(term)} size="md" />
       <Stat label="Ставка" value={formatRate(rate)} size="md" />
-      <Stat label="Платёж в месяц" value={formatMoney(monthly)} size="md" tone="accent" />
+      <Stat
+        label={revolving ? 'Проценты в месяц, максимум' : 'Платёж в месяц'}
+        value={formatMoney(monthly)}
+        size="md"
+        tone="accent"
+      />
     </div>
   )
 }
