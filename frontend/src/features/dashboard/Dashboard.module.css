@@ -383,12 +383,13 @@
 
 .notes {
   list-style: none;
-  margin: 0;
+  margin: 0 -12px;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
   max-height: 420px;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
@@ -398,13 +399,12 @@
   display: flex;
   align-items: flex-start;
   gap: 11px;
-  width: calc(100% + 24px);
+  width: 100%;
   padding: 12px;
   border-radius: 12px;
   text-align: left;
   position: relative;
   transition: background 0.2s;
-  margin: 0 -12px;
 }
 
 .note:hover {
@@ -573,8 +573,8 @@
   content: '';
   position: absolute;
   top: -2px;
-  left: 43px;
-  right: 0;
+  left: 55px;
+  right: 12px;
   height: 1px;
   background: var(--line);
   pointer-events: none;
