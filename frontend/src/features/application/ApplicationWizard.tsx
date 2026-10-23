@@ -19,6 +19,8 @@ import type { LiveParams, StepNav } from './wizard/types'
 import { useApplicationQuery, useInsights } from './wizard/useWizardData'
 import styles from './ApplicationWizard.module.css'
 
+const MOCK_FAIL_MODES = [1, 2] as const
+
 const descriptions: Record<StepKey, string> = {
   product: 'Начните с цели — подскажем подходящий продукт. Условия можно поменять до отправки заявки.',
   amount: 'Подберите сумму и срок так, чтобы платёж комфортно вписывался в денежный поток бизнеса.',
@@ -72,7 +74,7 @@ function WizardContent() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [stepParam])
-  const mockFail = searchParams.get('mock_fail') === '1'
+  const mockFail = MOCK_FAIL_MODES.find((mode) => String(mode) === searchParams.get('mock_fail')) ?? 0
   const presetProduct = searchParams.get('product')
 
   const handleLive = useCallback((next: LiveParams) => {
@@ -87,7 +89,7 @@ function WizardContent() {
   const buildSearch = useCallback(
     (key: StepKey) => {
       const params = new URLSearchParams({ step: key })
-      if (mockFail) params.set('mock_fail', '1')
+      if (mockFail) params.set('mock_fail', String(mockFail))
       return params.toString()
     },
     [mockFail],

@@ -19,8 +19,9 @@ from app.insights import (
     pre_approved_limit,
 )
 from app.labels import TAX_SYSTEM_LABELS, next_step, status_title
-from app.models import Db, StoredUser
+from app.models import UserRecord
 from app.queries import client_decision
+from app.repo import Db
 from app.schemas import AssistantContext
 
 PROMPT_PATH = Path(__file__).with_name("system_prompt.md")
@@ -31,7 +32,7 @@ def prompt_template() -> Template:
     return Template(PROMPT_PATH.read_text("utf-8"))
 
 
-def describe_company(db: Db, user: StoredUser, now: int) -> str:
+def describe_company(db: Db, user: UserRecord, now: int) -> str:
     mc = db.find_company(user.company_id)
     if not mc:
         return "ещё не добавлена — клиент на онбординге, заявку подать нельзя, пока не привязан ИП или юрлицо."
@@ -70,11 +71,10 @@ def describe_company(db: Db, user: StoredUser, now: int) -> str:
     return " ".join(lines)
 
 
-def describe_application(db: Db, user: StoredUser, context: AssistantContext) -> str:
-    record = db.find_application(context.application_id) if context.application_id else None
-    if not record or not user.company_id or record.company_id != user.company_id:
+def describe_application(db: Db, user: UserRecord, context: AssistantContext) -> str:
+    app = db.find_application(context.application_id) if context.application_id else None
+    if not app or not user.company_id or app.company_id != user.company_id:
         return ""
-    app = record.app
     parts = [
         f"Открыта заявка {app.number}: {app.product.name}, {money(app.amount)} на {app.term} мес., "
         f"статус «{status_title(app.status)}». Следующий шаг: {next_step(app.status)}"
@@ -85,7 +85,7 @@ def describe_application(db: Db, user: StoredUser, context: AssistantContext) ->
             f"Условия банка: {money(offer.amount)} на {offer.term} мес. под {rate_text(offer.rate)}, "
             f"платёж {money(offer.monthly_payment)}, действует до {date_ru(offer.valid_until)}."
         )
-    decision = client_decision(app.decision)
+    decision = client_decision(app.decision.model() if app.decision else None)
     if decision and decision.reasons:
         parts.append(f"Причины решения: {'; '.join(decision.reasons)}.")
     if app.info_request and app.info_request.status == "OPEN":
@@ -93,7 +93,7 @@ def describe_application(db: Db, user: StoredUser, context: AssistantContext) ->
     return " ".join(parts)
 
 
-def describe_loan(db: Db, user: StoredUser, context: AssistantContext, now: int) -> str:
+def describe_loan(db: Db, user: UserRecord, context: AssistantContext, now: int) -> str:
     facts = screen_loan(db, user, context, now)
     if not facts:
         return ""
@@ -124,7 +124,7 @@ def describe_loan(db: Db, user: StoredUser, context: AssistantContext, now: int)
     return text
 
 
-def build_system_prompt(db: Db, user: StoredUser, context: AssistantContext, now: int) -> str:
+def build_system_prompt(db: Db, user: UserRecord, context: AssistantContext, now: int) -> str:
     return prompt_template().substitute(
         max_rounds=settings.llm_max_rounds,
         user=f"{user.full_name}, {user.position}",

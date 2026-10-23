@@ -9,7 +9,7 @@ import { Button, StatusBadge } from '@/shared/ui'
 import { useApplicationCache } from './useApplication'
 import styles from './ApplicationHeader.module.css'
 
-const CANCELLABLE = new Set(['NEED_INFO', 'APPROVED'])
+const CANCELLABLE = new Set(['NEED_INFO', 'APPROVED', 'OFFER_ACCEPTED', 'SIGNING'])
 
 export function ApplicationHeader({ application }: { application: Application }) {
   const [confirming, setConfirming] = useState(false)
@@ -22,7 +22,7 @@ export function ApplicationHeader({ application }: { application: Application })
     },
   })
   const offer = application.offer
-  const agreed = offer && application.status !== 'COUNTER_OFFER' && offer.status !== 'DECLINED' ? offer : null
+  const agreed = offer && application.status !== 'COUNTER_OFFER' && offer.status !== 'DECLINED' && offer.status !== 'EXPIRED' ? offer : null
   const amount = agreed?.amount ?? application.amount
   const term = agreed?.term ?? application.term
   const rate = agreed?.rate ?? application.product.base_rate

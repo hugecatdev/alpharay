@@ -1,8 +1,13 @@
 import json
+from collections.abc import Callable
 from typing import Any
 
+from starlette.concurrency import run_in_threadpool
+
+from app import clock
 from app.annuity import credit_summary
 from app.assistant.targets import is_allowed_target
+from app.db import Database
 from app.fmt import age_label, date_ru, js_round, money, months_between, round_to
 from app.insights import (
     avg_free_cash_flow,
@@ -17,18 +22,20 @@ from app.labels import (
     DOCUMENT_KIND_LABELS,
     PRODUCT_CATEGORY_LABELS,
     PURPOSE_LABELS,
+    SIGNATURE_LABELS,
     TAX_SYSTEM_LABELS,
     next_step,
     status_description,
     status_title,
 )
-from app.models import Db, StoredApplication, StoredUser
+from app.models import ApplicationRecord, UserRecord
 from app.queries import AUTOMATIC_DECISION, client_decision
+from app.repo import Db
 from app.schemas import AssistantAction, AssistantContext, AssistantHint, Product
 from app.seeds import PRODUCTS
-from app.store import Store
 
 JsonDict = dict[str, Any]
+Handler = Callable[[Db, UserRecord, int, JsonDict], JsonDict]
 
 MAX_HINTS = 2
 MAX_SUGGESTIONS = 3
@@ -128,8 +135,8 @@ def _number(value: Any) -> float | None:
 
 
 class Toolbox:
-    def __init__(self, store: Store, user_id: str, context: AssistantContext) -> None:
-        self.store = store
+    def __init__(self, database: Database, user_id: str, context: AssistantContext) -> None:
+        self.database = database
         self.user_id = user_id
         self.context = context
         self.hints: list[AssistantHint] = []
@@ -145,7 +152,7 @@ class Toolbox:
             return {"error": "Аргументы должны быть JSON-объектом"}
         if name == "show_hints":
             return self.show_hints(arguments)
-        handlers = {
+        handlers: dict[str, Handler] = {
             "get_application": self.get_application,
             "list_applications": self.list_applications,
             "get_company_overview": self.get_company_overview,
@@ -156,11 +163,15 @@ class Toolbox:
         handler = handlers.get(name)
         if not handler:
             return {"error": f"Неизвестный инструмент {name}"}
-        async with self.store.session() as session:
-            user = session.db.find_user(self.user_id)
+        return await run_in_threadpool(self.call, handler, arguments)
+
+    def call(self, handler: Handler, arguments: JsonDict) -> JsonDict:
+        with self.database.session() as session:
+            db = Db(session)
+            user = db.find_user(self.user_id)
             if not user:
                 return {"error": "Пользователь не найден"}
-            return handler(session.db, user, session.now, arguments)
+            return handler(db, user, clock.now_ms(), arguments)
 
     def show_hints(self, arguments: JsonDict) -> JsonDict:
         rejected: list[str] = []
@@ -184,19 +195,18 @@ class Toolbox:
             result["note"] = "Таких элементов нет на текущем экране — не упоминай их"
         return result
 
-    def _record(self, db: Db, user: StoredUser, application_id: str | None) -> StoredApplication | None:
+    def _record(self, db: Db, user: UserRecord, application_id: str | None) -> ApplicationRecord | None:
         records = db.applications_of_company(user.company_id) if user.company_id else []
         wanted = application_id or self.context.application_id
         if wanted:
-            return next((record for record in records if record.app.id == wanted), None)
-        return max(records, key=lambda record: record.app.updated_at, default=None)
+            return next((record for record in records if record.id == wanted), None)
+        return max(records, key=lambda record: record.updated_at, default=None)
 
-    def get_application(self, db: Db, user: StoredUser, _: int, arguments: JsonDict) -> JsonDict:
+    def get_application(self, db: Db, user: UserRecord, _: int, arguments: JsonDict) -> JsonDict:
         requested = arguments.get("application_id")
-        record = self._record(db, user, requested if isinstance(requested, str) and requested else None)
-        if not record:
+        app = self._record(db, user, requested if isinstance(requested, str) and requested else None)
+        if not app:
             return {"error": "Заявка не найдена"}
-        app = record.app
         result: JsonDict = {
             "id": app.id,
             "number": app.number,
@@ -210,12 +220,13 @@ class Toolbox:
             "term_months": app.term,
             "base_rate": app.product.base_rate,
             "created_at": date_ru(app.created_at),
-            "submitted_at": date_ru(app.submitted_at) if app.submitted_at else None,
+            "submitted_at": date_ru(app.submitted_at) if app.submitted_at is not None else None,
             "documents": [DOCUMENT_KIND_LABELS[doc.kind] for doc in app.documents],
             "offer": None,
             "decision": None,
             "info_request": None,
             "contract": None,
+            "disbursement": None,
             "assessment": None,
         }
         if app.offer:
@@ -230,7 +241,7 @@ class Toolbox:
                 "valid_until": date_ru(offer.valid_until),
                 "requested": offer.requested.model_dump(),
             }
-        decision = client_decision(app.decision)
+        decision = client_decision(app.decision.model() if app.decision else None)
         if decision:
             result["decision"] = {
                 "type": decision.type,
@@ -249,10 +260,19 @@ class Toolbox:
         if app.contract:
             result["contract"] = {
                 "number": app.contract.number,
-                "signed_at": date_ru(app.contract.signed_at) if app.contract.signed_at else None,
+                "signed_at": date_ru(app.contract.signed_at) if app.contract.signed_at is not None else None,
+                "signed_with": SIGNATURE_LABELS[app.contract.signed_with] if app.contract.signed_with else None,
             }
-        if record.scoring and app.decision:
-            factors = record.scoring.factors
+        if app.disbursement:
+            result["disbursement"] = {
+                "operation_number": app.disbursement.operation_number,
+                "amount": app.disbursement.amount,
+                "date": date_ru(app.disbursement.created_at),
+                "simulated": True,
+            }
+        scoring = app.scoring
+        if scoring and app.decision:
+            factors = scoring.factors
             result["assessment"] = {
                 "strengths": [item.name for item in factors if item.points / item.max_points >= 0.7],
                 "weaknesses": [
@@ -263,26 +283,26 @@ class Toolbox:
             }
         return result
 
-    def list_applications(self, db: Db, user: StoredUser, _: int, __: JsonDict) -> JsonDict:
+    def list_applications(self, db: Db, user: UserRecord, _: int, __: JsonDict) -> JsonDict:
         records = db.applications_of_company(user.company_id) if user.company_id else []
-        ordered = sorted(records, key=lambda record: record.app.updated_at, reverse=True)
+        ordered = sorted(records, key=lambda record: record.updated_at, reverse=True)
         return {
             "applications": [
                 {
-                    "id": record.app.id,
-                    "number": record.app.number,
-                    "product": record.app.product.name,
-                    "amount": record.app.amount,
-                    "term_months": record.app.term,
-                    "status": record.app.status,
-                    "status_title": status_title(record.app.status),
-                    "updated_at": date_ru(record.app.updated_at),
+                    "id": record.id,
+                    "number": record.number,
+                    "product": record.product.name,
+                    "amount": record.amount,
+                    "term_months": record.term,
+                    "status": record.status,
+                    "status_title": status_title(record.status),
+                    "updated_at": date_ru(record.updated_at),
                 }
                 for record in ordered
             ]
         }
 
-    def get_company_overview(self, db: Db, user: StoredUser, now: int, _: JsonDict) -> JsonDict:
+    def get_company_overview(self, db: Db, user: UserRecord, now: int, _: JsonDict) -> JsonDict:
         mc = db.find_company(user.company_id)
         if not mc:
             return {"error": "Компания ещё не добавлена"}
@@ -327,7 +347,7 @@ class Toolbox:
             "monthly_debt_payments": sum(loan.monthly_payment for loan in loans),
         }
 
-    def list_products(self, db: Db, _: StoredUser, __: int, ___: JsonDict) -> JsonDict:
+    def list_products(self, db: Db, _: UserRecord, __: int, ___: JsonDict) -> JsonDict:
         return {
             "products": [
                 {
@@ -352,13 +372,13 @@ class Toolbox:
             ]
         }
 
-    def fill_loan_form(self, db: Db, user: StoredUser, now: int, arguments: JsonDict) -> JsonDict:
+    def fill_loan_form(self, db: Db, user: UserRecord, now: int, arguments: JsonDict) -> JsonDict:
         if self.context.screen != "wizard.amount":
             return {
                 "error": "Заполнить сумму и срок можно только на шаге «Сумма и срок» — предложи клиенту открыть его"
             }
         record = self._record(db, user, None) if self.context.application_id else None
-        product = record.app.product if record else db.find_product(str(self.context.data.get("product_code") or ""))
+        product = record.product if record else db.find_product(str(self.context.data.get("product_code") or ""))
         if not product:
             return {"error": "Не удалось определить продукт на экране"}
         amount = _number(arguments.get("amount"))
@@ -377,10 +397,8 @@ class Toolbox:
         filled_amount = js_round(amount) if amount is not None else None
         filled_term = js_round(term) if term is not None else None
         self.actions = [AssistantAction(type="set_loan_params", amount=filled_amount, term=filled_term)]
-        current_amount = _number(self.context.data.get("amount")) or (
-            record.app.amount if record else product.min_amount
-        )
-        current_term = _number(self.context.data.get("term")) or (record.app.term if record else product.min_term)
+        current_amount = _number(self.context.data.get("amount")) or (record.amount if record else product.min_amount)
+        current_term = _number(self.context.data.get("term")) or (record.term if record else product.min_term)
         return {
             "ok": True,
             "filled": {"amount": filled_amount, "term_months": filled_term},
@@ -395,7 +413,7 @@ class Toolbox:
             ),
         }
 
-    def calc_loan(self, db: Db, user: StoredUser, now: int, arguments: JsonDict) -> JsonDict:
+    def calc_loan(self, db: Db, user: UserRecord, now: int, arguments: JsonDict) -> JsonDict:
         amount = _number(arguments.get("amount"))
         term = _number(arguments.get("term"))
         if amount is None or amount <= 0 or term is None or not 1 <= term <= 120:
@@ -414,7 +432,7 @@ def _load_percent(value: float | None) -> int | None:
 
 
 def loan_facts(
-    db: Db, user: StoredUser, amount: float, term: int, rate: float, product: Product | None, now: int
+    db: Db, user: UserRecord, amount: float, term: int, rate: float, product: Product | None, now: int
 ) -> JsonDict:
     repayment = product.repayment if product else "ANNUITY"
     summary = credit_summary(repayment, amount, term, rate)
@@ -461,7 +479,7 @@ def loan_facts(
     return result
 
 
-def screen_loan(db: Db, user: StoredUser, context: AssistantContext, now: int) -> JsonDict | None:
+def screen_loan(db: Db, user: UserRecord, context: AssistantContext, now: int) -> JsonDict | None:
     amount = _number(context.data.get("amount"))
     term = _number(context.data.get("term"))
     if amount is None or amount <= 0 or term is None or not 1 <= term <= 120:

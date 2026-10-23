@@ -1,8 +1,9 @@
 import math
 
 from app.annuity import credit_schedule, credit_summary, max_amount_for_payment
-from app.fmt import js_round, parse_ms
-from app.models import Db, StoredCompany
+from app.fmt import iso, js_round, parse_ms
+from app.models import CompanyRecord
+from app.repo import Db
 from app.schemas import ActiveLoan, BkiData, BkiLoan, CompanyInsights, Financials, TurnoverMonth
 from app.scoring import stop_factors
 
@@ -39,13 +40,22 @@ def debt_load(turnover: list[TurnoverMonth], loans: list[ActiveLoan], new_paymen
     return (monthly_debt(loans) + new_payment) / flow
 
 
+def affordability_basis(
+    turnover: list[TurnoverMonth], loans: list[ActiveLoan], financials: Financials
+) -> tuple[int, int]:
+    if turnover:
+        return operating_cash_flow(turnover, loans), monthly_debt(loans)
+    existing = financials.monthly_debt_payments
+    return js_round((financials.revenue_12m - financials.expenses_12m) / 12) + existing, existing
+
+
 def limit_rate(db: Db) -> float:
     product = db.find_product(LIMIT_PRODUCT)
     return product.base_rate if product else LIMIT_FALLBACK_RATE
 
 
-def pre_approved_limit(db: Db, mc: StoredCompany, now: int) -> int:
-    if not mc.turnover or stop_factors(mc):
+def pre_approved_limit(db: Db, mc: CompanyRecord, now: int) -> int:
+    if not mc.turnover or stop_factors(mc.fns, mc.bki, mc.egrul):
         return 0
     loans = company_loans(db, mc, now)
     room = operating_cash_flow(mc.turnover, loans) * COMFORT_LOAD - monthly_debt(loans)
@@ -55,15 +65,15 @@ def pre_approved_limit(db: Db, mc: StoredCompany, now: int) -> int:
     return max(0, math.floor(amount / LIMIT_STEP) * LIMIT_STEP)
 
 
-def own_loans(db: Db, mc: StoredCompany, now: int) -> list[ActiveLoan]:
+def own_loans(db: Db, mc: CompanyRecord, now: int) -> list[ActiveLoan]:
     own: list[ActiveLoan] = []
-    for record in db.applications:
-        app = record.app
-        if record.company_id != mc.company.id or app.status != "DISBURSED" or not record.disbursed_at:
+    for app in db.disbursed_of_company(mc.id):
+        disbursed_at = app.disbursed_at
+        if disbursed_at is None:
             continue
         rate = app.offer.rate if app.offer else app.product.base_rate
         repayment = app.product.repayment
-        schedule = credit_schedule(repayment, app.amount, app.term, rate, parse_ms(record.disbursed_at))
+        schedule = credit_schedule(repayment, app.amount, app.term, rate, disbursed_at)
         upcoming = next((row for row in schedule if parse_ms(row.date) > now), None)
         if not upcoming:
             continue
@@ -78,18 +88,18 @@ def own_loans(db: Db, mc: StoredCompany, now: int) -> list[ActiveLoan]:
                 rate=rate,
                 monthly_payment=credit_summary(repayment, app.amount, app.term, rate).monthly_payment,
                 next_payment_date=upcoming.date,
-                issued_at=record.disbursed_at,
+                issued_at=iso(disbursed_at),
                 maturity_date=schedule[-1].date,
             )
         )
     return own
 
 
-def company_loans(db: Db, mc: StoredCompany, now: int) -> list[ActiveLoan]:
+def company_loans(db: Db, mc: CompanyRecord, now: int) -> list[ActiveLoan]:
     return [*mc.external_loans, *own_loans(db, mc, now)]
 
 
-def bki_report(db: Db, mc: StoredCompany, now: int) -> BkiData:
+def bki_report(db: Db, mc: CompanyRecord, now: int) -> BkiData:
     external = [loan for loan in mc.bki.active_loans if loan.creditor != OWN_BANK]
     own = [
         BkiLoan(
@@ -105,7 +115,7 @@ def bki_report(db: Db, mc: StoredCompany, now: int) -> BkiData:
     return mc.bki.model_copy(update={"active_loans": [*external, *own]})
 
 
-def company_insights(db: Db, mc: StoredCompany, now: int) -> CompanyInsights:
+def company_insights(db: Db, mc: CompanyRecord, now: int) -> CompanyInsights:
     return CompanyInsights(
         turnover=mc.turnover,
         avg_free_cash_flow=avg_free_cash_flow(mc.turnover),
@@ -114,7 +124,7 @@ def company_insights(db: Db, mc: StoredCompany, now: int) -> CompanyInsights:
     )
 
 
-def derived_financials(db: Db, mc: StoredCompany, now: int) -> Financials:
+def derived_financials(db: Db, mc: CompanyRecord, now: int) -> Financials:
     revenue = sum(month.inflow for month in mc.turnover)
     expenses = sum(month.outflow for month in mc.turnover)
     debt = monthly_debt(company_loans(db, mc, now))

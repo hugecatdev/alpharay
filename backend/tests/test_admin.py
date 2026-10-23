@@ -48,7 +48,7 @@ def test_dashboard(api: Api) -> None:
     assert totals["disbursed_count"] == 2 and totals["disbursed_amount"] == 13_500_000
     assert board["approval_rate"] == 0.75 and board["auto_decision_share"] == 0.6
     assert board["avg_manual_review_hours"] == 6 and board["avg_time_to_decision_minutes"] > 0
-    assert len(board["funnel"]) == 15 and [item["code"] for item in board["by_product"]] == SEEDED_CODES
+    assert len(board["funnel"]) == 17 and [item["code"] for item in board["by_product"]] == SEEDED_CODES
     staff = {item["id"]: item for item in board["underwriters"]}
     assert staff["u-underwriter"]["decisions"] == 2 and staff["u-underwriter"]["active_reviews"] == 1
     assert staff["u-underwriter2"]["active_reviews"] == 1 and staff["u-admin"]["role"] == "ADMIN"
@@ -196,7 +196,8 @@ def test_policy_validation_and_threshold(api: Api) -> None:
     assert saved["updated_by"] == "Захарова Елена Викторовна"
     assert api.ok(api.get("/config"))["manual_review_amount_threshold"] == 1_000_000
     entry = api.ok(api.get("/admin/audit", params={"entity_type": "policy"}))[0]
-    assert entry["summary"] == "порог ручного рассмотрения 5 000 000 ₽ → 1 000 000 ₽"
+    assert entry["summary"] == "Версия 2: порог ручного рассмотрения 5 000 000 ₽ → 1 000 000 ₽"
+    assert api.ok(api.get("/admin/policy"))["version"] == 2
 
     api.login("client1@demo.local")
     app = api.fill_draft("WORKING_CAPITAL", 2_000_000, 24)
@@ -219,7 +220,7 @@ def test_policy_drives_generic_decisions(api: Api) -> None:
     )
     api.login("client6@demo.local")
     api.ok(api.post("/company", json={"inn": "771405283916"}))
-    app = api.fill_draft("WORKING_CAPITAL", 1_000_000, 12)
+    app = api.fill_draft("WORKING_CAPITAL", 1_000_000, 12, revenue=9_600_000)
     api.ok(api.post(f"/applications/{app['id']}/submit"))
     offered = api.wait(app["id"])
     assert offered["status"] == "COUNTER_OFFER"
@@ -239,9 +240,8 @@ def test_manual_disbursement_and_auto_assign(api: Api) -> None:
     )
 
     api.login("client1@demo.local")
-    app = api.fill_draft("WORKING_CAPITAL", 1_000_000, 12)
-    api.ok(api.post(f"/applications/{app['id']}/submit"))
-    assert api.wait(app["id"])["status"] == "APPROVED"
+    app = api.approved(amount=1_000_000, term=12)
+    api.ok(api.post(f"/applications/{app['id']}/offer/accept"))
     api.ok(api.post(f"/applications/{app['id']}/sign"))
     api.ok(api.post(f"/applications/{app['id']}/sign/confirm", json={"code": "4821"}))
     assert api.wait(app["id"], 30)["status"] == "SIGNED"

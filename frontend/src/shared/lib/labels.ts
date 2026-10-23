@@ -54,6 +54,7 @@ export const notificationTypeLabels: Record<NotificationType, string> = {
   DECISION_MADE: 'Решение',
   OFFER_PENDING: 'Предложение',
   OFFER_EXPIRING: 'Срок предложения',
+  OFFER_EXPIRED: 'Предложение истекло',
   CONTRACT_READY: 'Договор',
   DISBURSED: 'Зачисление',
   PERSONAL_OFFER: 'Для вас',

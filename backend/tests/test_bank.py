@@ -23,6 +23,9 @@ def test_queue_card_and_stats(api: Api) -> None:
 
     card = api.ok(api.get(f"/bank/applications/{client3_review_id(api)}"))
     assert card["enrichment"]["bki"]["max_overdue_days_24m"] == 45
+    assert [check["type"] for check in card["checks"]] == ["COMPLETENESS", "EGRUL", "FNS", "ACCOUNT", "BKI"]
+    assert [revision["reason"] for revision in card["revisions"]] == ["SUBMITTED"]
+    assert card["decision"]["reason_codes"] == ["OVERDUE_HISTORY"]
     assert card["scoring"]["model_version"] == "rules-v1.2" and len(card["scoring"]["factors"]) == 7
     assert set(card["recommendation"]) <= {"type", "amount", "term", "rate", "reasons"}
 
@@ -33,7 +36,7 @@ def test_queue_card_and_stats(api: Api) -> None:
 
     stats = api.ok(api.get("/bank/stats"))
     assert stats["total"] == 8
-    assert stats["funnel"][0]["status"] == "SUBMITTED" and len(stats["funnel"]) == 15
+    assert stats["funnel"][0]["status"] == "SUBMITTED" and len(stats["funnel"]) == 17
     assert 0 < stats["auto_decision_share"] < 1 and stats["avg_review_hours"] > 0
 
 
@@ -71,11 +74,26 @@ def test_counter_offer_by_underwriter_then_client_accepts(api: Api) -> None:
     offers = [item for item in api.ok(api.get("/notifications")) if item["type"] == "OFFER_PENDING"]
     assert offers and offers[0]["application_id"] == review_id
     accepted = api.ok(api.post(f"/applications/{review_id}/offer/accept"))
-    assert accepted["status"] == "APPROVED" and accepted["amount"] == 3_000_000
+    assert accepted["status"] == "OFFER_ACCEPTED" and accepted["amount"] == 3_000_000
 
     api.login("underwriter@bank.local")
     events = api.ok(api.get(f"/bank/applications/{review_id}/events"))
     assert [event["actor_type"] for event in events][-2:] == ["UNDERWRITER", "CLIENT"]
+
+
+def test_accountant_signs_with_head_certificate(api: Api) -> None:
+    review_id = client3_review_id(api)
+    api.ok(api.post(f"/bank/applications/{review_id}/decision", json={"type": "APPROVED", "comment": ""}))
+
+    api.login("client3@demo.local")
+    company = api.ok(api.get("/company"))
+    api.ok(api.post(f"/applications/{review_id}/offer/accept"))
+    api.ok(api.post(f"/applications/{review_id}/sign"))
+    certificates = api.ok(api.get(f"/applications/{review_id}/sign/certificates"))
+    valid = [item for item in certificates if item["problem"] is None]
+    assert len(valid) == 1 and valid[0]["owner_name"] == company["head_name"]
+    signed = api.ok(api.post(f"/applications/{review_id}/sign/kep", json={"certificate_id": valid[0]["id"]}))
+    assert signed["status"] == "SIGNED" and signed["contract"]["certificate"]["owner_name"] == company["head_name"]
 
 
 def test_need_info_and_reject_validation(api: Api) -> None:

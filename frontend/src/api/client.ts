@@ -7,12 +7,14 @@ export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly missing: string[]
+  readonly correlationId: string | null
 
   constructor(status: number, body: ApiErrorBody) {
     super(body.detail)
     this.status = status
     this.code = body.code
     this.missing = body.missing ?? []
+    this.correlationId = body.correlation_id ?? null
   }
 }
 
@@ -55,8 +57,16 @@ export interface RequestOptions {
   body?: unknown
   form?: FormData
   query?: Record<string, QueryValue>
+  headers?: Record<string, string>
+  idempotent?: boolean
   signal?: AbortSignal
   timeoutMs?: number
+}
+
+export function newIdempotencyKey(): string {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 function buildUrl(path: string, query?: Record<string, QueryValue>): string {
@@ -75,8 +85,9 @@ function isErrorBody(value: unknown): value is ApiErrorBody {
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers = new Headers({ Accept: 'application/json' })
+  const headers = new Headers({ Accept: 'application/json', ...options.headers })
   if (token) headers.set('Authorization', `Bearer ${token}`)
+  if (options.idempotent) headers.set('Idempotency-Key', newIdempotencyKey())
 
   let body: BodyInit | undefined
   if (options.form) {
@@ -90,14 +101,22 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const timer = options.timeoutMs ? window.setTimeout(() => controller.abort(), options.timeoutMs) : undefined
   options.signal?.addEventListener('abort', () => controller.abort())
 
-  let response: Response
-  try {
-    response = await fetch(buildUrl(path, options.query), {
+  const send = () =>
+    fetch(buildUrl(path, options.query), {
       method: options.method ?? 'GET',
       headers,
       body,
       signal: controller.signal,
     })
+
+  let response: Response
+  try {
+    try {
+      response = await send()
+    } catch (error) {
+      if (!options.idempotent || controller.signal.aborted) throw error
+      response = await send()
+    }
   } catch (error) {
     if (controller.signal.aborted) {
       throw new ApiError(0, { detail: 'Превышено время ожидания ответа', code: 'TIMEOUT' })

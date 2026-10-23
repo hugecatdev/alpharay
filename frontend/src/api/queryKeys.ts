@@ -7,6 +7,7 @@ export const queryKeys = {
   application: (id: string) => ['applications', id] as const,
   events: (id: string) => ['applications', id, 'events'] as const,
   contract: (id: string) => ['applications', id, 'contract'] as const,
+  certificates: (id: string) => ['applications', id, 'certificates'] as const,
   schedule: (id: string) => ['applications', id, 'schedule'] as const,
   notifications: ['notifications'] as const,
   notificationsList: (unread: boolean) => ['notifications', { unread }] as const,

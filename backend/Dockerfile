@@ -16,12 +16,13 @@ RUN pip install --require-hashes -r requirements.txt \
     && useradd --system --uid 10001 --home-dir /app alpharay \
     && mkdir -p /data \
     && chown alpharay /data
+COPY alembic.ini ./
+COPY migrations ./migrations
 COPY app ./app
-ENV DATA_FILE=/data/state.json \
-    UPLOAD_DIR=/data/uploads
+ENV UPLOAD_DIR=/data/uploads
 USER alpharay
 VOLUME /data
 EXPOSE 8000
-HEALTHCHECK --interval=15s --timeout=3s --start-period=10s \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"
+HEALTHCHECK --interval=15s --timeout=3s --start-period=20s \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/ready', timeout=2)"
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

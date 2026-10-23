@@ -104,7 +104,6 @@ export function LoginPage() {
                 <li key={account.email}>
                   <button type="button" className={styles.demoItem} onClick={() => fillDemo(account.email)}>
                     <span className={styles.demoTitle}>{account.title}</span>
-                    <span className={styles.demoDescription}>{account.description}</span>
                     <span className={styles.demoEmail}>{account.email}</span>
                   </button>
                 </li>

@@ -1,16 +1,54 @@
 name: alpharay
 
+x-backend-environment: &backend-environment
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-alpharay}:${POSTGRES_PASSWORD:-alpharay}@postgres:5432/${POSTGRES_DB:-alpharay}
+  DATABASE_AUTOCREATE: "false"
+  UPLOAD_DIR: /data/uploads
+
 services:
+  postgres:
+    image: postgres:17.6-alpine3.22@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-alpharay}
+      POSTGRES_USER: ${POSTGRES_USER:-alpharay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alpharay}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   backend:
     build: ./backend
     env_file:
       - path: ./backend/.env
         required: false
     environment:
-      DATA_FILE: /data/state.json
-      UPLOAD_DIR: /data/uploads
+      <<: *backend-environment
+      PIPELINE_WORKER: "false"
     volumes:
       - backend-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      <<: *backend-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      disable: true
     restart: unless-stopped
 
   frontend:
@@ -42,5 +80,6 @@ services:
     restart: on-failure
 
 volumes:
+  postgres-data:
   backend-data:
   ollama-models:

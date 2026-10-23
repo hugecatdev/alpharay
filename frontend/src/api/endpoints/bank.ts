@@ -18,10 +18,11 @@ export const bankApi = {
   events: (id: string) => request<AppEvent[]>(`/bank/applications/${id}/events`),
   assign: (id: string) => request<BankApplication>(`/bank/applications/${id}/assign`, { method: 'POST' }),
   decide: (id: string, body: BankDecisionRequest) =>
-    request<BankApplication>(`/bank/applications/${id}/decision`, { method: 'POST', body }),
+    request<BankApplication>(`/bank/applications/${id}/decision`, { method: 'POST', body, idempotent: true }),
   stats: () => request<BankStats>('/bank/stats'),
   notes: (id: string) => request<ApplicationNote[]>(`/bank/applications/${id}/notes`),
   addNote: (id: string, text: string) =>
     request<ApplicationNote>(`/bank/applications/${id}/notes`, { method: 'POST', body: { text } }),
-  disburse: (id: string) => request<BankApplication>(`/bank/applications/${id}/disburse`, { method: 'POST' }),
+  disburse: (id: string) =>
+    request<BankApplication>(`/bank/applications/${id}/disburse`, { method: 'POST', idempotent: true }),
 }

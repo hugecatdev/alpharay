@@ -56,18 +56,38 @@ test('client1: заявка → одобрение → подписание → 
   await shot(page, '11-application-processing')
   await waitForStatus(page, 'Одобрено')
   await shot(page, '12-application-approved')
+  await page.getByRole('button', { name: 'Принять условия' }).click()
+  await waitForStatus(page, 'Условия приняты')
   await page.getByRole('link', { name: /Перейти к подписанию/ }).first().click()
   await expect(page).toHaveURL(/\/sign$/)
+  await expect(page.getByText(/Подписание и выдача смоделированы/)).toBeVisible()
   await expect(page.locator('iframe[title="Текст кредитного договора"]')).toBeVisible()
   await page.getByLabel('С условиями договора ознакомлен(а)').check()
   await page.getByRole('button', { name: 'Подписать', exact: true }).click()
-  await page.getByLabel('Код подтверждения').fill('1111')
-  await page.getByRole('button', { name: 'Подтвердить' }).click()
-  await expect(page.getByText('Неверный код').first()).toBeVisible()
-  await page.getByLabel('Код подтверждения').fill('4821')
-  await page.getByRole('button', { name: 'Подтвердить' }).click()
+  const certificates = page.locator('[data-assist="sign-certificate"]')
+  await expect(certificates.getByText('Срок действия сертификата истёк')).toBeVisible()
+  await certificates.getByRole('button', { name: /Действителен/ }).click()
+  await page.getByRole('button', { name: 'Подписать КЭП' }).click()
   await expect(page.getByText('Средства зачислены').first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText(/Выдача смоделирована: операция PAY-/)).toBeVisible()
   await shot(page, '13-disbursed')
+})
+
+test('client1: подписание кодом с экрана, без SMS', async ({ page }) => {
+  await login(page, 'client1@demo.local')
+  await fillWizard(page, { purpose: 'Пополнение оборотных средств', product: 'WORKING_CAPITAL', amount: 1_000_000 })
+  await waitForStatus(page, 'Одобрено')
+  await page.getByRole('button', { name: 'Принять условия' }).click()
+  await waitForStatus(page, 'Условия приняты')
+  await page.getByRole('link', { name: /Перейти к подписанию/ }).first().click()
+  await page.getByLabel('С условиями договора ознакомлен(а)').check()
+  await page.getByRole('button', { name: 'Подписать', exact: true }).click()
+  await page.getByRole('button', { name: /Подписать кодом подтверждения/ }).click()
+  const code = page.locator('[data-assist="sign-code"]')
+  await expect(code.getByText('4821')).toBeVisible()
+  await code.getByLabel('Код подтверждения').fill('4821')
+  await code.getByRole('button', { name: 'Подписать кодом' }).click()
+  await expect(page.getByText('Средства зачислены').first()).toBeVisible({ timeout: 20_000 })
 })
 
 test('client3 → андеррайтер: контрпредложение → клиент принимает', async ({ page }) => {
@@ -89,7 +109,7 @@ test('client3 → андеррайтер: контрпредложение → �
   await expect(page.locator('[data-assist="counter-offer"]')).toBeVisible()
   await shot(page, '22-counter-offer')
   await page.getByRole('button', { name: 'Принять предложение' }).click()
-  await waitForStatus(page, 'Одобрено')
+  await waitForStatus(page, 'Условия приняты')
 })
 
 test('администратор банка входит в кабинет банка и видит очередь', async ({ page }) => {
@@ -113,7 +133,7 @@ test('client5: нужна информация → дополнить → пов
   await waitForStatus(page, 'Нужна информация')
   await shot(page, '40-need-info')
   const block = page.locator('[data-assist="info-request"]')
-  await block.locator('input[inputmode="numeric"], input[type="text"]').first().fill('41000000')
+  await block.locator('input[inputmode="numeric"], input[type="text"]').first().fill('24000000')
   await block.locator('input[type="file"]').first().setInputFiles({
     name: 'vypiska-6m.pdf',
     mimeType: 'application/pdf',

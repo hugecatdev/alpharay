@@ -53,34 +53,24 @@
   flex-wrap: wrap;
 }
 
+.code {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
 .hint {
   font-size: 14px;
   color: var(--negative);
   font-weight: 600;
 }
 
-.code {
-  font-size: 17px;
-  letter-spacing: 0.2em;
-  color: var(--blue);
-}
-
-.codeForm {
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
-.codeForm > div:first-child {
-  width: 220px;
-}
-
-.codeInput input {
-  font-size: 26px;
-  letter-spacing: 0.5em;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+.certificates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 12px;
 }
 
 .waiting {
@@ -148,6 +138,15 @@
   letter-spacing: -0.05em;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
+}
+
+.signature {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .doneActions {

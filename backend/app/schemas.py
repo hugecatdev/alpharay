@@ -27,6 +27,7 @@ ApplicationStatus = Literal[
     "DECIDING",
     "APPROVED",
     "COUNTER_OFFER",
+    "OFFER_ACCEPTED",
     "NEED_INFO",
     "MANUAL_REVIEW",
     "REJECTED",
@@ -35,10 +36,15 @@ ApplicationStatus = Literal[
     "DISBURSED",
     "CLIENT_DECLINED",
     "CANCELLED",
+    "EXPIRED",
 ]
 DocumentKind = Literal["BANK_STATEMENT", "TAX_RETURN", "EQUIPMENT_INVOICE", "OTHER"]
 OfferStatus = Literal["PENDING", "ACCEPTED", "DECLINED", "EXPIRED"]
 InfoItemType = Literal["text", "number", "document"]
+InfoRequestStatus = Literal["OPEN", "ANSWERED", "CANCELLED"]
+CheckType = Literal["COMPLETENESS", "EGRUL", "FNS", "BKI", "ACCOUNT"]
+CheckStatus = Literal["OK", "ISSUES", "ERROR"]
+RevisionReason = Literal["SUBMITTED", "INFO_PROVIDED"]
 DecisionType = Literal["APPROVED", "COUNTER_OFFER", "NEED_INFO", "MANUAL_REVIEW", "REJECTED"]
 BankDecisionType = Literal["APPROVED", "COUNTER_OFFER", "NEED_INFO", "REJECTED"]
 ActorType = Literal["CLIENT", "SYSTEM", "UNDERWRITER"]
@@ -49,11 +55,13 @@ NotificationType = Literal[
     "DECISION_MADE",
     "OFFER_PENDING",
     "OFFER_EXPIRING",
+    "OFFER_EXPIRED",
     "CONTRACT_READY",
     "DISBURSED",
     "PERSONAL_OFFER",
 ]
 Grade = Literal["A", "B", "C", "D"]
+SignatureType = Literal["PEP", "KEP"]
 AutoDecision = Literal["APPROVED", "COUNTER_OFFER", "MANUAL_REVIEW", "REJECTED"]
 AssistantFieldValue = str | int | float | bool | None
 
@@ -62,14 +70,28 @@ def _omit_none(value: object) -> bool:
     return value is None
 
 
+class FieldError(BaseModel):
+    field: str
+    message: str
+
+
 class ApiErrorBody(BaseModel):
     detail: str
     code: str
     missing: list[str] | None = Field(default=None, exclude_if=_omit_none)
+    field_errors: list[FieldError] | None = Field(default=None, exclude_if=_omit_none)
+    correlation_id: str | None = Field(default=None, exclude_if=_omit_none)
 
 
 class Health(BaseModel):
     status: str
+
+
+class HealthReady(BaseModel):
+    status: Literal["ok", "degraded", "unavailable"]
+    checks: dict[str, str]
+    queue_due: int
+    queue_lag_seconds: float
 
 
 class User(BaseModel):
@@ -262,19 +284,48 @@ class InfoRequest(BaseModel):
     id: str
     items: list[InfoRequestItem]
     comment: str
-    status: Literal["OPEN", "ANSWERED"]
+    status: InfoRequestStatus
 
 
 class Decision(BaseModel):
     type: DecisionType
     made_by: str
     reasons: list[str]
+    reason_codes: list[str] = Field(default_factory=list)
     created_at: str
+
+
+class Certificate(BaseModel):
+    id: str
+    serial: str
+    owner_name: str
+    owner_title: str
+    organization: str
+    inn: str
+    ogrn: str
+    issuer: str
+    valid_from: str
+    valid_to: str
+
+
+class SigningCertificate(Certificate):
+    problem: str | None
 
 
 class ContractRef(BaseModel):
     number: str
     signed_at: str | None
+    signed_with: SignatureType | None = None
+    certificate: Certificate | None = None
+
+
+class Disbursement(BaseModel):
+    operation_number: str
+    amount: int
+    account_number: str
+    contract_number: str
+    disbursed_at: str
+    simulated: bool
 
 
 class Application(BaseModel):
@@ -295,6 +346,10 @@ class Application(BaseModel):
     info_request: InfoRequest | None
     decision: Decision | None
     contract: ContractRef | None
+    disbursement: Disbursement | None = None
+    previous_application_id: str | None = None
+    version: int = 1
+    revision: int = 0
     created_at: str
     submitted_at: str | None
     updated_at: str
@@ -338,6 +393,10 @@ class InfoRespondRequest(BaseModel):
     answers: list[InfoAnswer] = Field(default_factory=list)
 
 
+class AcceptOfferRequest(BaseModel):
+    offer_id: str | None = None
+
+
 class Contract(BaseModel):
     number: str
     html: str
@@ -349,6 +408,10 @@ class SignResponse(BaseModel):
 
 class SignConfirmRequest(BaseModel):
     code: str = ""
+
+
+class SignKepRequest(BaseModel):
+    certificate_id: str = ""
 
 
 class AppNotification(BaseModel):
@@ -496,6 +559,26 @@ class Enrichment(BaseModel):
     bki: BkiData
 
 
+class CheckResult(BaseModel):
+    type: CheckType
+    source: str
+    status: CheckStatus
+    summary: str
+    attempt: int
+    checked_at: str
+
+
+class RevisionSummary(BaseModel):
+    sequence: int
+    reason: RevisionReason
+    author_name: str
+    amount: int
+    term: int
+    financials: Financials | None
+    answers: list[InfoAnswer]
+    created_at: str
+
+
 class BankApplication(Application):
     enrichment: Enrichment | None
     scoring: Scoring | None
@@ -503,6 +586,9 @@ class BankApplication(Application):
     discrepancies: list[Discrepancy]
     assigned_to: str | None
     assignee_id: str | None = None
+    checks: list[CheckResult] = Field(default_factory=list)
+    revisions: list[RevisionSummary] = Field(default_factory=list)
+    info_requests: list[InfoRequest] = Field(default_factory=list)
 
 
 class BankDecisionRequest(BaseModel):
@@ -556,9 +642,14 @@ class CreditPolicyInput(BaseModel):
     manual_review_sla_hours: int = Field(ge=1, le=240)
     auto_assign: bool
     auto_disbursement: bool
+    max_debt_load: float = Field(default=0.7, ge=0.1, le=1)
+    revenue_mismatch_percent: int = Field(default=20, ge=1, le=100)
+    manual_review_overdue_days: int = Field(default=30, ge=0, le=365)
+    min_business_age_months: int = Field(default=3, ge=0, le=120)
 
 
 class CreditPolicy(CreditPolicyInput):
+    version: int = 1
     updated_at: str | None = None
     updated_by: str | None = None
 

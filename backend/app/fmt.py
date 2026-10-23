@@ -137,6 +137,10 @@ def plural(n: int, one: str, few: str, many: str) -> str:
     return many
 
 
+def days_label(days: int) -> str:
+    return f"{days} {plural(days, 'день', 'дня', 'дней')}"
+
+
 def age_label(total_months: int) -> str:
     years = total_months // 12
     months = total_months % 12

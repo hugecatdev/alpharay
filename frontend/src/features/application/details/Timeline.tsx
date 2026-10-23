@@ -23,6 +23,7 @@ function toneFor(status: ApplicationStatus): StageTone {
     case 'MANUAL_REVIEW':
       return 'info'
     case 'COUNTER_OFFER':
+    case 'OFFER_ACCEPTED':
     case 'SIGNING':
       return 'accent'
     case 'APPROVED':
@@ -42,9 +43,9 @@ function buildStages(status: ApplicationStatus, previousStatus: ApplicationStatu
     currentIndex = PAYOUT_INDEX
   } else if (status === 'SIGNED') {
     currentIndex = PAYOUT_INDEX
-  } else if (status === 'APPROVED' || status === 'SIGNING') {
+  } else if (status === 'APPROVED' || status === 'OFFER_ACCEPTED' || status === 'SIGNING') {
     currentIndex = SIGNING_INDEX
-  } else if (status === 'REJECTED' || status === 'CLIENT_DECLINED') {
+  } else if (status === 'REJECTED' || status === 'CLIENT_DECLINED' || status === 'EXPIRED') {
     currentIndex = DECISION_INDEX
     failed = true
   } else if (status === 'CANCELLED') {

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AlphaRay API",
-    "description": "Бэкенд умного кредитного кабинета: конвейер заявок, кабинет андеррайтера, администрирование банка, ассистент Рэй.",
-    "version": "0.1.0"
+    "description": "Бэкенд умного кредитного кабинета: конвейер заявок на PostgreSQL, кабинет андеррайтера, администрирование банка, ассистент Рэй.",
+    "version": "0.2.0"
   },
   "paths": {
     "/api/health": {
@@ -55,7 +55,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -70,6 +70,208 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/live": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Live",
+        "operationId": "live_api_health_live_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт состояния или версии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Ready",
+        "operationId": "ready_api_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReady"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт состояния или версии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReady"
                 }
               }
             }
@@ -126,7 +328,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -137,6 +339,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -207,7 +429,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -218,6 +440,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -278,7 +520,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -289,6 +531,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -354,7 +616,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -365,6 +627,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -438,7 +720,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -449,6 +731,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -531,7 +833,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -542,6 +844,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -602,7 +924,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -613,6 +935,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -636,16 +978,21 @@
         ],
         "summary": "List Applications",
         "operationId": "list_applications_api_applications_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/ApplicationShort"
                   },
-                  "type": "array",
                   "title": "Response List Applications Api Applications Get"
                 }
               }
@@ -682,7 +1029,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -700,13 +1047,28 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       },
       "post": {
         "tags": [
@@ -714,15 +1076,39 @@
         ],
         "summary": "Create Application",
         "operationId": "create_application_api_applications_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateApplicationRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -766,7 +1152,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -784,13 +1170,28 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/applications/{application_id}": {
@@ -858,7 +1259,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -869,6 +1270,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -898,6 +1319,22 @@
             "schema": {
               "type": "string",
               "title": "Application Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
             }
           }
         ],
@@ -953,7 +1390,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -964,6 +1401,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1049,7 +1506,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1060,6 +1517,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1138,7 +1615,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1149,6 +1626,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1191,6 +1688,23 @@
               "default": 0,
               "title": "Mock Fail"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "responses": {
@@ -1235,7 +1749,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1246,6 +1760,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1278,6 +1812,23 @@
               "type": "string",
               "title": "Application Id"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "responses": {
@@ -1322,7 +1873,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1333,6 +1884,150 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/resubmit": {
+      "post": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Resubmit",
+        "operationId": "resubmit_api_applications__application_id__resubmit_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт состояния или версии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1413,7 +2108,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1424,6 +2119,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1464,6 +2179,23 @@
             "schema": {
               "type": "string",
               "title": "Request Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -1519,7 +2251,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1530,6 +2262,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1546,8 +2298,8 @@
         "tags": [
           "applications"
         ],
-        "summary": "Accept Offer",
-        "operationId": "accept_offer_api_applications__application_id__offer_accept_post",
+        "summary": "Accept",
+        "operationId": "accept_api_applications__application_id__offer_accept_post",
         "security": [
           {
             "HTTPBearer": []
@@ -1562,8 +2314,42 @@
               "type": "string",
               "title": "Application Id"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/AcceptOfferRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1606,7 +2392,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1617,6 +2403,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1633,8 +2439,8 @@
         "tags": [
           "applications"
         ],
-        "summary": "Decline Offer",
-        "operationId": "decline_offer_api_applications__application_id__offer_decline_post",
+        "summary": "Decline",
+        "operationId": "decline_api_applications__application_id__offer_decline_post",
         "security": [
           {
             "HTTPBearer": []
@@ -1648,6 +2454,23 @@
             "schema": {
               "type": "string",
               "title": "Application Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -1693,7 +2516,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1704,6 +2527,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1780,7 +2623,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1791,6 +2634,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1822,6 +2685,23 @@
             "schema": {
               "type": "string",
               "title": "Application Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -1867,7 +2747,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1878,6 +2758,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -1909,6 +2809,23 @@
             "schema": {
               "type": "string",
               "title": "Application Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -1964,7 +2881,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -1975,6 +2892,271 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/sign/certificates": {
+      "get": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Sign Certificates",
+        "operationId": "sign_certificates_api_applications__application_id__sign_certificates_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SigningCertificate"
+                  },
+                  "title": "Response Sign Certificates Api Applications  Application Id  Sign Certificates Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт состояния или версии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/sign/kep": {
+      "post": {
+        "tags": [
+          "applications"
+        ],
+        "summary": "Sign Kep",
+        "operationId": "sign_kep_api_applications__application_id__sign_kep_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignKepRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Application"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Требуется вход",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Недостаточно прав",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Не найдено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт состояния или версии",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2055,7 +3237,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2066,6 +3248,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2157,7 +3359,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2168,6 +3370,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2221,7 +3443,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2232,6 +3454,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2306,7 +3548,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2317,6 +3559,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2387,7 +3649,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2398,6 +3660,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2479,7 +3761,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2490,6 +3772,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2550,7 +3852,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2561,6 +3863,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2669,7 +3991,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2680,6 +4002,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2756,7 +4098,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2767,6 +4109,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2847,7 +4209,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2858,6 +4220,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2934,7 +4316,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -2945,6 +4327,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -2976,6 +4378,23 @@
             "schema": {
               "type": "string",
               "title": "Application Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -3021,7 +4440,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3032,6 +4451,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3112,7 +4551,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3123,6 +4562,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3207,7 +4666,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3218,6 +4677,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3249,6 +4728,23 @@
             "schema": {
               "type": "string",
               "title": "Application Id"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -3304,7 +4800,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3315,6 +4811,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3400,7 +4916,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3411,6 +4927,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3562,7 +5098,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3573,6 +5109,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3659,7 +5215,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3670,6 +5226,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3734,7 +5310,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3745,6 +5321,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3818,7 +5414,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3829,6 +5425,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3920,7 +5536,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -3931,6 +5547,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -3995,7 +5631,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -4006,6 +5642,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -4079,7 +5735,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -4090,6 +5746,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -4181,7 +5857,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -4192,6 +5868,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -4252,7 +5948,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -4263,6 +5959,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -4336,7 +6052,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -4347,6 +6063,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -4499,7 +6235,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -4510,6 +6246,26 @@
           },
           "422": {
             "description": "Ошибка валидации",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
             "content": {
               "application/json": {
                 "schema": {
@@ -4563,7 +6319,7 @@
             }
           },
           "409": {
-            "description": "Конфликт состояния",
+            "description": "Конфликт состояния или версии",
             "content": {
               "application/json": {
                 "schema": {
@@ -4581,6 +6337,26 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Слишком много запросов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Сервис временно недоступен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
           }
         }
       }
@@ -4588,6 +6364,23 @@
   },
   "components": {
     "schemas": {
+      "AcceptOfferRequest": {
+        "properties": {
+          "offer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offer Id"
+          }
+        },
+        "type": "object",
+        "title": "AcceptOfferRequest"
+      },
       "ActiveLoan": {
         "properties": {
           "id": {
@@ -4691,6 +6484,7 @@
               "DECIDING",
               "APPROVED",
               "COUNTER_OFFER",
+              "OFFER_ACCEPTED",
               "NEED_INFO",
               "MANUAL_REVIEW",
               "REJECTED",
@@ -4698,7 +6492,8 @@
               "SIGNED",
               "DISBURSED",
               "CLIENT_DECLINED",
-              "CANCELLED"
+              "CANCELLED",
+              "EXPIRED"
             ],
             "title": "Status"
           },
@@ -4902,6 +6697,31 @@
               }
             ],
             "title": "Missing"
+          },
+          "field_errors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FieldError"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field Errors"
+          },
+          "correlation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correlation Id"
           }
         },
         "type": "object",
@@ -5013,6 +6833,7 @@
                   "DECIDING",
                   "APPROVED",
                   "COUNTER_OFFER",
+                  "OFFER_ACCEPTED",
                   "NEED_INFO",
                   "MANUAL_REVIEW",
                   "REJECTED",
@@ -5020,7 +6841,8 @@
                   "SIGNED",
                   "DISBURSED",
                   "CLIENT_DECLINED",
-                  "CANCELLED"
+                  "CANCELLED",
+                  "EXPIRED"
                 ]
               },
               {
@@ -5040,6 +6862,7 @@
               "DECIDING",
               "APPROVED",
               "COUNTER_OFFER",
+              "OFFER_ACCEPTED",
               "NEED_INFO",
               "MANUAL_REVIEW",
               "REJECTED",
@@ -5047,7 +6870,8 @@
               "SIGNED",
               "DISBURSED",
               "CLIENT_DECLINED",
-              "CANCELLED"
+              "CANCELLED",
+              "EXPIRED"
             ],
             "title": "To Status"
           },
@@ -5118,6 +6942,7 @@
               "DECISION_MADE",
               "OFFER_PENDING",
               "OFFER_EXPIRING",
+              "OFFER_EXPIRED",
               "CONTRACT_READY",
               "DISBURSED",
               "PERSONAL_OFFER"
@@ -5174,6 +6999,7 @@
               "DECIDING",
               "APPROVED",
               "COUNTER_OFFER",
+              "OFFER_ACCEPTED",
               "NEED_INFO",
               "MANUAL_REVIEW",
               "REJECTED",
@@ -5181,7 +7007,8 @@
               "SIGNED",
               "DISBURSED",
               "CLIENT_DECLINED",
-              "CANCELLED"
+              "CANCELLED",
+              "EXPIRED"
             ],
             "title": "Status"
           },
@@ -5286,6 +7113,37 @@
                 "type": "null"
               }
             ]
+          },
+          "disbursement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Disbursement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_application_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Application Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 1
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision",
+            "default": 0
           },
           "created_at": {
             "type": "string",
@@ -5402,6 +7260,7 @@
               "DECIDING",
               "APPROVED",
               "COUNTER_OFFER",
+              "OFFER_ACCEPTED",
               "NEED_INFO",
               "MANUAL_REVIEW",
               "REJECTED",
@@ -5409,7 +7268,8 @@
               "SIGNED",
               "DISBURSED",
               "CLIENT_DECLINED",
-              "CANCELLED"
+              "CANCELLED",
+              "EXPIRED"
             ],
             "title": "Status"
           },
@@ -5774,6 +7634,7 @@
               "DECIDING",
               "APPROVED",
               "COUNTER_OFFER",
+              "OFFER_ACCEPTED",
               "NEED_INFO",
               "MANUAL_REVIEW",
               "REJECTED",
@@ -5781,7 +7642,8 @@
               "SIGNED",
               "DISBURSED",
               "CLIENT_DECLINED",
-              "CANCELLED"
+              "CANCELLED",
+              "EXPIRED"
             ],
             "title": "Status"
           },
@@ -5887,6 +7749,37 @@
               }
             ]
           },
+          "disbursement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Disbursement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_application_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Application Id"
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 1
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision",
+            "default": 0
+          },
           "created_at": {
             "type": "string",
             "title": "Created At"
@@ -5964,6 +7857,27 @@
               }
             ],
             "title": "Assignee Id"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CheckResult"
+            },
+            "type": "array",
+            "title": "Checks"
+          },
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/RevisionSummary"
+            },
+            "type": "array",
+            "title": "Revisions"
+          },
+          "info_requests": {
+            "items": {
+              "$ref": "#/components/schemas/InfoRequest"
+            },
+            "type": "array",
+            "title": "Info Requests"
           }
         },
         "type": "object",
@@ -6041,6 +7955,7 @@
               "DECIDING",
               "APPROVED",
               "COUNTER_OFFER",
+              "OFFER_ACCEPTED",
               "NEED_INFO",
               "MANUAL_REVIEW",
               "REJECTED",
@@ -6048,7 +7963,8 @@
               "SIGNED",
               "DISBURSED",
               "CLIENT_DECLINED",
-              "CANCELLED"
+              "CANCELLED",
+              "EXPIRED"
             ],
             "title": "Status"
           },
@@ -6331,6 +8247,114 @@
         "type": "object",
         "title": "Body_upload_document_api_applications__application_id__documents_post"
       },
+      "Certificate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "serial": {
+            "type": "string",
+            "title": "Serial"
+          },
+          "owner_name": {
+            "type": "string",
+            "title": "Owner Name"
+          },
+          "owner_title": {
+            "type": "string",
+            "title": "Owner Title"
+          },
+          "organization": {
+            "type": "string",
+            "title": "Organization"
+          },
+          "inn": {
+            "type": "string",
+            "title": "Inn"
+          },
+          "ogrn": {
+            "type": "string",
+            "title": "Ogrn"
+          },
+          "issuer": {
+            "type": "string",
+            "title": "Issuer"
+          },
+          "valid_from": {
+            "type": "string",
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "type": "string",
+            "title": "Valid To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "serial",
+          "owner_name",
+          "owner_title",
+          "organization",
+          "inn",
+          "ogrn",
+          "issuer",
+          "valid_from",
+          "valid_to"
+        ],
+        "title": "Certificate"
+      },
+      "CheckResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "COMPLETENESS",
+              "EGRUL",
+              "FNS",
+              "BKI",
+              "ACCOUNT"
+            ],
+            "title": "Type"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OK",
+              "ISSUES",
+              "ERROR"
+            ],
+            "title": "Status"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "attempt": {
+            "type": "integer",
+            "title": "Attempt"
+          },
+          "checked_at": {
+            "type": "string",
+            "title": "Checked At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "source",
+          "status",
+          "summary",
+          "attempt",
+          "checked_at"
+        ],
+        "title": "CheckResult"
+      },
       "Company": {
         "properties": {
           "inn": {
@@ -6610,6 +8634,31 @@
               }
             ],
             "title": "Signed At"
+          },
+          "signed_with": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PEP",
+                  "KEP"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signed With"
+          },
+          "certificate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Certificate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -6731,6 +8780,39 @@
             "type": "boolean",
             "title": "Auto Disbursement"
           },
+          "max_debt_load": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.1,
+            "title": "Max Debt Load",
+            "default": 0.7
+          },
+          "revenue_mismatch_percent": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Revenue Mismatch Percent",
+            "default": 20
+          },
+          "manual_review_overdue_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 0.0,
+            "title": "Manual Review Overdue Days",
+            "default": 30
+          },
+          "min_business_age_months": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Min Business Age Months",
+            "default": 3
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "default": 1
+          },
           "updated_at": {
             "anyOf": [
               {
@@ -6829,6 +8911,34 @@
           "auto_disbursement": {
             "type": "boolean",
             "title": "Auto Disbursement"
+          },
+          "max_debt_load": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.1,
+            "title": "Max Debt Load",
+            "default": 0.7
+          },
+          "revenue_mismatch_percent": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Revenue Mismatch Percent",
+            "default": 20
+          },
+          "manual_review_overdue_days": {
+            "type": "integer",
+            "maximum": 365.0,
+            "minimum": 0.0,
+            "title": "Manual Review Overdue Days",
+            "default": 30
+          },
+          "min_business_age_months": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Min Business Age Months",
+            "default": 3
           }
         },
         "type": "object",
@@ -6926,6 +9036,13 @@
             "type": "array",
             "title": "Reasons"
           },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
           "created_at": {
             "type": "string",
             "title": "Created At"
@@ -6962,6 +9079,44 @@
           "description"
         ],
         "title": "DemoAccount"
+      },
+      "Disbursement": {
+        "properties": {
+          "operation_number": {
+            "type": "string",
+            "title": "Operation Number"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "account_number": {
+            "type": "string",
+            "title": "Account Number"
+          },
+          "contract_number": {
+            "type": "string",
+            "title": "Contract Number"
+          },
+          "disbursed_at": {
+            "type": "string",
+            "title": "Disbursed At"
+          },
+          "simulated": {
+            "type": "boolean",
+            "title": "Simulated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation_number",
+          "amount",
+          "account_number",
+          "contract_number",
+          "disbursed_at",
+          "simulated"
+        ],
+        "title": "Disbursement"
       },
       "Discrepancy": {
         "properties": {
@@ -7058,6 +9213,24 @@
           "bki"
         ],
         "title": "Enrichment"
+      },
+      "FieldError": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field",
+          "message"
+        ],
+        "title": "FieldError"
       },
       "Financials": {
         "properties": {
@@ -7206,6 +9379,7 @@
               "DECIDING",
               "APPROVED",
               "COUNTER_OFFER",
+              "OFFER_ACCEPTED",
               "NEED_INFO",
               "MANUAL_REVIEW",
               "REJECTED",
@@ -7213,7 +9387,8 @@
               "SIGNED",
               "DISBURSED",
               "CLIENT_DECLINED",
-              "CANCELLED"
+              "CANCELLED",
+              "EXPIRED"
             ],
             "title": "Status"
           },
@@ -7275,6 +9450,42 @@
         ],
         "title": "Health"
       },
+      "HealthReady": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "checks": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Checks"
+          },
+          "queue_due": {
+            "type": "integer",
+            "title": "Queue Due"
+          },
+          "queue_lag_seconds": {
+            "type": "number",
+            "title": "Queue Lag Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "checks",
+          "queue_due",
+          "queue_lag_seconds"
+        ],
+        "title": "HealthReady"
+      },
       "InfoAnswer": {
         "properties": {
           "code": {
@@ -7314,7 +9525,8 @@
             "type": "string",
             "enum": [
               "OPEN",
-              "ANSWERED"
+              "ANSWERED",
+              "CANCELLED"
             ],
             "title": "Status"
           }
@@ -8362,6 +10574,67 @@
         ],
         "title": "Recommendation"
       },
+      "RevisionSummary": {
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "title": "Sequence"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "INFO_PROVIDED"
+            ],
+            "title": "Reason"
+          },
+          "author_name": {
+            "type": "string",
+            "title": "Author Name"
+          },
+          "amount": {
+            "type": "integer",
+            "title": "Amount"
+          },
+          "term": {
+            "type": "integer",
+            "title": "Term"
+          },
+          "financials": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Financials"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/InfoAnswer"
+            },
+            "type": "array",
+            "title": "Answers"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sequence",
+          "reason",
+          "author_name",
+          "amount",
+          "term",
+          "financials",
+          "answers",
+          "created_at"
+        ],
+        "title": "RevisionSummary"
+      },
       "Scoring": {
         "properties": {
           "score": {
@@ -8456,6 +10729,17 @@
         "type": "object",
         "title": "SignConfirmRequest"
       },
+      "SignKepRequest": {
+        "properties": {
+          "certificate_id": {
+            "type": "string",
+            "title": "Certificate Id",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "SignKepRequest"
+      },
       "SignResponse": {
         "properties": {
           "confirmation_code": {
@@ -8468,6 +10752,76 @@
           "confirmation_code"
         ],
         "title": "SignResponse"
+      },
+      "SigningCertificate": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "serial": {
+            "type": "string",
+            "title": "Serial"
+          },
+          "owner_name": {
+            "type": "string",
+            "title": "Owner Name"
+          },
+          "owner_title": {
+            "type": "string",
+            "title": "Owner Title"
+          },
+          "organization": {
+            "type": "string",
+            "title": "Organization"
+          },
+          "inn": {
+            "type": "string",
+            "title": "Inn"
+          },
+          "ogrn": {
+            "type": "string",
+            "title": "Ogrn"
+          },
+          "issuer": {
+            "type": "string",
+            "title": "Issuer"
+          },
+          "valid_from": {
+            "type": "string",
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "type": "string",
+            "title": "Valid To"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "serial",
+          "owner_name",
+          "owner_title",
+          "organization",
+          "inn",
+          "ogrn",
+          "issuer",
+          "valid_from",
+          "valid_to",
+          "problem"
+        ],
+        "title": "SigningCertificate"
       },
       "SlaBreach": {
         "properties": {

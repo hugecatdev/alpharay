@@ -9,12 +9,21 @@ class Settings(BaseSettings):
 
     jwt_secret: str = "alpharay-dev-secret-change-me-in-production"
     jwt_ttl_hours: int = 12
-    data_file: str = "data/state.json"
+    database_url: str = "postgresql+psycopg://alpharay:alpharay@localhost:5432/alpharay"
+    database_pool_size: int = 10
+    database_max_overflow: int = 10
+    database_autocreate: bool = True
     upload_dir: str = "uploads"
     max_upload_mb: int = 20
     timezone: str = "Europe/Moscow"
+    demo_seed: bool = True
     demo_reset_enabled: bool = False
     demo_accounts_on_login: bool = True
+    pipeline_worker: bool = True
+    worker_poll_seconds: float = 0.5
+    log_format: str = "json"
+    log_level: str = "INFO"
+    rate_limit_enabled: bool = True
 
     assistant_enabled: bool = True
     llm_base_url: str = "https://api.groq.com/openai/v1"
@@ -32,10 +41,6 @@ class Settings(BaseSettings):
     @property
     def assistant_available(self) -> bool:
         return self.assistant_enabled and bool(self.llm_api_key.strip()) and bool(self.llm_model.strip())
-
-    @property
-    def data_path(self) -> Path | None:
-        return Path(self.data_file) if self.data_file.strip() else None
 
     @property
     def upload_path(self) -> Path | None:

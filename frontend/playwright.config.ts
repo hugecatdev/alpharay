@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 const port = Number(process.env.E2E_PORT ?? 5180)
 const apiPort = Number(process.env.E2E_API_PORT ?? 8010)
 const python = process.env.BACKEND_PYTHON ?? '.venv/bin/python'
+const databaseUrl = process.env.E2E_DATABASE_URL ?? 'postgresql+psycopg://postgres:test@127.0.0.1:55432/alpharay_e2e'
 
 export default defineConfig({
   testDir: './e2e',
@@ -33,7 +34,14 @@ export default defineConfig({
       command: `${python} -m uvicorn app.main:app --host 127.0.0.1 --port ${apiPort}`,
       cwd: '../backend',
       url: `http://127.0.0.1:${apiPort}/api/health`,
-      env: { DATA_FILE: '', UPLOAD_DIR: '', DEMO_RESET_ENABLED: 'true' },
+      env: {
+        DATABASE_URL: databaseUrl,
+        UPLOAD_DIR: '',
+        DEMO_RESET_ENABLED: 'true',
+        PIPELINE_WORKER: 'true',
+        RATE_LIMIT_ENABLED: 'false',
+        LOG_FORMAT: 'text',
+      },
       reuseExistingServer: true,
       timeout: 60_000,
     },

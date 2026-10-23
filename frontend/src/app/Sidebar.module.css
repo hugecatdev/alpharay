@@ -84,6 +84,20 @@
   padding-top: 12px;
 }
 
+.demo {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 13px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.demo .label {
+  white-space: normal;
+}
+
 .utility {
   display: flex;
   align-items: center;
@@ -109,6 +123,7 @@
 }
 
 .collapsed .item,
+.collapsed .demo,
 .collapsed .utility {
   justify-content: center;
   padding: 0;

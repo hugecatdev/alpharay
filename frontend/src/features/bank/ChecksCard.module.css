@@ -1,0 +1,41 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list + .list {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary {
+  color: var(--text);
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.answers {
+  color: var(--muted);
+  font-size: 13px;
+  padding-left: 16px;
+  list-style: disc;
+}

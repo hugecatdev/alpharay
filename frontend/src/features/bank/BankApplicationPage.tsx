@@ -10,6 +10,7 @@ import { formatFileSize, formatMoney, formatRate } from '@/shared/lib/money'
 import { isProcessing, statusMeta } from '@/shared/lib/statusMeta'
 import { Alert, Badge, Button, Card, EmptyState, ErrorState, KeyValueList, PageLoader, StatusBadge } from '@/shared/ui'
 import { decisionTone, decisionTypeLabels, madeByLabel } from './bankLabels'
+import { ChecksCard } from './ChecksCard'
 import { DecisionForm } from './DecisionForm'
 import { EnrichmentTabs } from './EnrichmentTabs'
 import { FinancialsCard } from './FinancialsCard'
@@ -48,7 +49,13 @@ function buildHistory(application: BankApplication): HistoryEntry[] {
     })
   }
   if (application.contract?.signed_at) {
-    entries.push({ date: application.contract.signed_at, title: 'Договор подписан', detail: `№ ${application.contract.number}` })
+    const { certificate, number, signed_at, signed_with } = application.contract
+    const signature = certificate
+      ? ` · КЭП: ${certificate.owner_name}, сертификат № ${certificate.serial}, ${certificate.issuer}`
+      : signed_with === 'PEP'
+        ? ' · простая электронная подпись'
+        : ''
+    entries.push({ date: signed_at, title: 'Договор подписан', detail: `№ ${number}${signature}` })
   }
   entries.push({ date: application.updated_at, title: `Текущий статус: ${statusMeta[application.status].title}` })
   return entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -96,6 +103,15 @@ function DecisionSummary({ application, justSent }: { application: BankApplicati
                 <li key={reason}>{reason}</li>
               ))}
             </ul>
+          )}
+          {decision.reason_codes.length > 0 && (
+            <div className={styles.summaryHead}>
+              {decision.reason_codes.map((code) => (
+                <Badge key={code} tone="neutral">
+                  {code}
+                </Badge>
+              ))}
+            </div>
           )}
           {application.offer && (
             <KeyValueList
@@ -208,6 +224,7 @@ export function BankApplicationPage() {
             )}
           </Card>
 
+          <ChecksCard application={application} />
           <EnrichmentTabs application={application} />
           <FinancialsCard application={application} />
 

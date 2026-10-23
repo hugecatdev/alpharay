@@ -88,7 +88,7 @@ interface ReviewStepProps {
   application: Application
   insights: CompanyInsights | undefined
   nav: StepNav
-  mockFail: boolean
+  mockFail: number
 }
 
 export function ReviewStep({ application, insights, nav, mockFail }: ReviewStepProps) {
@@ -309,7 +309,7 @@ export function ReviewStep({ application, insights, nav, mockFail }: ReviewStepP
         nextLabel="Отправить заявку"
         nextIcon={<Send size={18} />}
         assist="submit"
-        hint={mockFail ? 'Демо-режим: обогащение данных завершится с повторным запросом в БКИ' : 'Отправка бесплатна и ни к чему не обязывает'}
+        hint="Отправка бесплатна и ни к чему не обязывает"
       />
     </div>
   )

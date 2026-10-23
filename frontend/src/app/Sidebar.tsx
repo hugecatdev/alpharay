@@ -8,6 +8,7 @@ import {
   ChevronsRight,
   FilePlus2,
   Files,
+  FlaskConical,
   Inbox,
   LayoutGrid,
 } from 'lucide-react'
@@ -62,6 +63,12 @@ export function Sidebar({ role, collapsed, onToggle }: { role: Role; collapsed: 
         ))}
       </nav>
       <div className={styles.bottom}>
+        <p className={styles.demo} title="Демонстрационный прототип: данные синтетические, проверки, подписание и выдача смоделированы">
+          <span className={styles.icon}>
+            <FlaskConical size={16} />
+          </span>
+          <span className={styles.label}>Демо: данные синтетические, проверки, подпись и выдача смоделированы</span>
+        </p>
         {onToggle && (
           <button
             type="button"

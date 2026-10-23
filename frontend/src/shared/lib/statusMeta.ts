@@ -66,13 +66,19 @@ export const statusMeta: Record<ApplicationStatus, StatusMeta> = {
   },
   APPROVED: {
     title: 'Одобрено',
-    description: 'Кредит одобрен. Проверьте условия и перейдите к подписанию договора.',
+    description: 'Кредит одобрен. Проверьте условия и примите их — после этого откроется договор на подпись.',
     tone: 'success',
+    nextAction: 'Принять условия',
+  },
+  OFFER_ACCEPTED: {
+    title: 'Условия приняты',
+    description: 'Вы приняли условия банка. Осталось подписать кредитный договор.',
+    tone: 'accent',
     nextAction: 'Перейти к подписанию',
   },
   SIGNING: {
     title: 'Подписание',
-    description: 'Договор сформирован. Подтвердите подписание кодом.',
+    description: 'Договор сформирован. Подпишите его квалифицированной электронной подписью руководителя.',
     tone: 'accent',
     nextAction: 'Подписать договор',
   },
@@ -106,6 +112,12 @@ export const statusMeta: Record<ApplicationStatus, StatusMeta> = {
     tone: 'neutral',
     nextAction: null,
   },
+  EXPIRED: {
+    title: 'Срок предложения истёк',
+    description: 'Предложение банка не было принято вовремя. Подайте заявку повторно — условия рассчитаем заново.',
+    tone: 'neutral',
+    nextAction: 'Подать повторно',
+  },
 }
 
 export const PROCESSING_STATUSES: ApplicationStatus[] = [
@@ -116,8 +128,9 @@ export const PROCESSING_STATUSES: ApplicationStatus[] = [
   'DECIDING',
   'MANUAL_REVIEW',
 ]
-export const ACTION_STATUSES: ApplicationStatus[] = ['NEED_INFO', 'COUNTER_OFFER', 'APPROVED', 'SIGNING']
-export const FINAL_STATUSES: ApplicationStatus[] = ['SIGNED', 'DISBURSED', 'REJECTED', 'CLIENT_DECLINED', 'CANCELLED']
+export const ACTION_STATUSES: ApplicationStatus[] = ['NEED_INFO', 'COUNTER_OFFER', 'APPROVED', 'OFFER_ACCEPTED', 'SIGNING']
+export const FINAL_STATUSES: ApplicationStatus[] = ['SIGNED', 'DISBURSED', 'REJECTED', 'CLIENT_DECLINED', 'CANCELLED', 'EXPIRED']
+export const RESUBMIT_STATUSES: ApplicationStatus[] = ['REJECTED', 'CLIENT_DECLINED', 'CANCELLED', 'EXPIRED']
 
 export type StatusGroup = 'draft' | 'processing' | 'action' | 'final'
 
@@ -144,8 +157,8 @@ export const TIMELINE: TimelineStage[] = [
     title: 'Рассмотрение',
     statuses: ['SUBMITTED', 'VALIDATING', 'ENRICHING', 'SCORING', 'DECIDING', 'MANUAL_REVIEW', 'NEED_INFO'],
   },
-  { key: 'decision', title: 'Решение', statuses: ['COUNTER_OFFER', 'APPROVED', 'REJECTED', 'CLIENT_DECLINED'] },
-  { key: 'signing', title: 'Подписание', statuses: ['SIGNING', 'SIGNED'] },
+  { key: 'decision', title: 'Решение', statuses: ['COUNTER_OFFER', 'APPROVED', 'REJECTED', 'CLIENT_DECLINED', 'EXPIRED'] },
+  { key: 'signing', title: 'Подписание', statuses: ['OFFER_ACCEPTED', 'SIGNING', 'SIGNED'] },
   { key: 'disbursed', title: 'Зачисление', statuses: ['DISBURSED'] },
 ]
 

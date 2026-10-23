@@ -1,16 +1,21 @@
+from dataclasses import dataclass
+
 from app.annuity import credit_summary
-from app.fmt import age_label, decimal_text, js_round, lower_first, money, months_between, percent, round_to
-from app.models import StoredCompany
+from app.fmt import age_label, days_label, decimal_text, js_round, money, months_between, percent, round_to
 from app.schemas import (
     ActiveLoan,
-    Application,
+    BkiData,
+    Company,
     CreditPolicy,
     Discrepancy,
+    EgrulData,
     Financials,
+    FnsData,
     Grade,
-    Recommendation,
+    Product,
     Scoring,
     ScoringFactor,
+    TurnoverMonth,
 )
 
 MODEL_VERSION = "rules-v1.2"
@@ -27,19 +32,32 @@ CLIENT_STRENGTHS = {
 APPROVAL_FALLBACK = "Финансовые показатели и кредитная история соответствуют условиям продукта"
 LOW_SCORE_REASON = "Финансовые показатели и кредитная история пока не соответствуют требованиям продукта"
 RISK_MARKUP_REASON = "Ставка выше базовой с учётом оценки риска"
+ACTIVE_STATUS = "Действующее"
+STOP_OVERDUE_DAYS = 90
 
 
-def stop_factors(mc: StoredCompany) -> list[str]:
+@dataclass(frozen=True)
+class Sources:
+    company: Company
+    egrul: EgrulData
+    fns: FnsData
+    bki: BkiData
+    turnover: list[TurnoverMonth]
+
+
+def stop_factors(fns: FnsData, bki: BkiData, egrul: EgrulData | None = None) -> list[str]:
     result: list[str] = []
-    if mc.fns.tax_debt > 0:
-        result.append(f"Налоговая задолженность {money(mc.fns.tax_debt)}")
-    if mc.fns.account_blocks:
+    if egrul and egrul.status != ACTIVE_STATUS:
+        result.append(f"Статус в ЕГРЮЛ/ЕГРИП: {egrul.status.lower()}")
+    if fns.tax_debt > 0:
+        result.append(f"Налоговая задолженность {money(fns.tax_debt)}")
+    if fns.account_blocks:
         result.append("Блокировки расчётных счетов по решению ФНС")
-    if mc.bki.max_overdue_days_24m > 90:
-        result.append(f"Просрочка по кредитам {mc.bki.max_overdue_days_24m} дней")
-    if mc.fns.disqualified_head:
+    if bki.max_overdue_days_24m > STOP_OVERDUE_DAYS:
+        result.append(f"Просрочка по кредитам {days_label(bki.max_overdue_days_24m)}")
+    if fns.disqualified_head:
         result.append("Руководитель дисквалифицирован")
-    if mc.fns.mass_address:
+    if fns.mass_address:
         result.append("Адрес массовой регистрации")
     return result
 
@@ -63,8 +81,10 @@ def _tier(value: float, steps: list[tuple[float, int]], fallback: int) -> int:
 
 
 def compute_scoring(
-    mc: StoredCompany,
-    app: Application,
+    sources: Sources,
+    product: Product,
+    amount: int,
+    term: int,
     financials: Financials,
     loans: list[ActiveLoan],
     now: int,
@@ -72,7 +92,7 @@ def compute_scoring(
 ) -> Scoring:
     factors: list[ScoringFactor] = []
 
-    age = months_between(mc.company.registration_date, now)
+    age = months_between(sources.company.registration_date, now)
     factors.append(
         _factor(
             "business_age",
@@ -89,7 +109,7 @@ def compute_scoring(
     )
 
     revenue = financials.revenue_12m
-    ratio = revenue / app.amount if app.amount > 0 else 0
+    ratio = revenue / amount if amount > 0 else 0
     factors.append(
         _factor(
             "revenue_to_amount",
@@ -105,7 +125,7 @@ def compute_scoring(
         )
     )
 
-    new_payment = credit_summary(app.product.repayment, app.amount, app.term, app.product.base_rate).monthly_payment
+    new_payment = credit_summary(product.repayment, amount, term, product.base_rate).monthly_payment
     existing = financials.monthly_debt_payments or sum(loan.monthly_payment for loan in loans)
     monthly_revenue = revenue / 12 or 1
     load = (existing + new_payment) / monthly_revenue * 100
@@ -125,7 +145,7 @@ def compute_scoring(
         )
     )
 
-    overdue = mc.bki.max_overdue_days_24m
+    overdue = sources.bki.max_overdue_days_24m
     discipline = 15 if overdue == 0 else 12 if overdue <= 5 else 8 if overdue <= 30 else 4 if overdue <= 90 else 0
     factors.append(
         _factor(
@@ -142,19 +162,19 @@ def compute_scoring(
         )
     )
 
-    rating = mc.bki.rating
+    rating = sources.bki.rating
     factors.append(
         _factor(
             "bki_rating",
             "Рейтинг БКИ",
-            f"{rating} — {mc.bki.rating_label}",
+            f"{rating} — {sources.bki.rating_label}",
             _tier(rating, [(800, 10), (700, 8), (600, 6), (450, 3)], 0),
             10,
             "Оценка бюро кредитных историй",
         )
     )
 
-    turnover = mc.turnover
+    turnover = sources.turnover
     half = max(1, len(turnover) // 2)
     first = sum(month.inflow for month in turnover[:half]) / half
     second = sum(month.inflow for month in turnover[-half:]) / half
@@ -191,7 +211,7 @@ def compute_scoring(
     )
 
     score = sum(item.points for item in factors)
-    stops = stop_factors(mc)
+    stops = stop_factors(sources.fns, sources.bki, sources.egrul)
     grade: Grade = "D" if stops else grade_for(score, policy)
     return Scoring(score=score, grade=grade, factors=factors, stop_factors=stops, model_version=MODEL_VERSION)
 
@@ -215,62 +235,33 @@ def grade_for(score: int, policy: CreditPolicy) -> Grade:
     return "D"
 
 
-def counter_amount(app: Application, policy: CreditPolicy) -> int:
-    return max(app.product.min_amount, round_to(app.amount * policy.counter_offer_share, 50_000))
+def counter_amount(product: Product, amount: int, policy: CreditPolicy) -> int:
+    return max(product.min_amount, round_to(amount * policy.counter_offer_share, 50_000))
 
 
-def compute_recommendation(scoring: Scoring, app: Application, policy: CreditPolicy) -> Recommendation:
-    rate = app.product.base_rate + policy.grades[scoring.grade].rate_markup
-    if scoring.stop_factors:
-        return Recommendation(type="REJECTED", reasons=scoring.stop_factors)
-    if scoring.grade == "A":
-        return Recommendation(
-            type="APPROVED",
-            amount=app.amount,
-            term=app.term,
-            rate=rate,
-            reasons=["Высокий балл скоринга", "Нет стоп-факторов"],
-        )
-    if scoring.grade == "B":
-        reasons = ["Хороший балл скоринга"]
-        if rate > app.product.base_rate:
-            reasons.append("Ставка повышена с учётом умеренного риска")
-        return Recommendation(type="APPROVED", amount=app.amount, term=app.term, rate=rate, reasons=reasons)
-    if scoring.grade == "C":
-        weak = [lower_first(item.name) for item in scoring.factors if item.points / item.max_points <= 0.35]
-        return Recommendation(
-            type="COUNTER_OFFER",
-            amount=counter_amount(app, policy),
-            term=app.term,
-            rate=rate,
-            reasons=[
-                "Средний балл скоринга",
-                f"Слабые факторы: {', '.join(weak)}" if weak else "Рекомендуется снизить сумму",
-            ],
-        )
-    return Recommendation(type="REJECTED", reasons=["Низкий балл скоринга"])
+def revenue_gap(declared: int, external: int) -> float | None:
+    if external <= 0:
+        return None
+    return (declared - external) / external * 100
 
 
-def compute_discrepancies(mc: StoredCompany, app: Application) -> list[Discrepancy]:
-    if not app.financials:
+def compute_discrepancies(fns: FnsData, company: Company, financials: Financials | None) -> list[Discrepancy]:
+    if not financials:
         return []
     result: list[Discrepancy] = []
-    declared = app.financials.revenue_12m
-    external = mc.fns.declared_revenue_12m
-    if external > 0:
-        diff = (declared - external) / external * 100
-        if abs(diff) >= 10:
-            result.append(
-                Discrepancy(
-                    field="revenue_12m",
-                    label="Выручка за 12 месяцев",
-                    declared=declared,
-                    external=external,
-                    diff_percent=js_round(diff * 10) / 10,
-                )
+    gap = revenue_gap(financials.revenue_12m, fns.declared_revenue_12m)
+    if gap is not None and abs(gap) >= 10:
+        result.append(
+            Discrepancy(
+                field="revenue_12m",
+                label="Выручка за 12 месяцев",
+                declared=financials.revenue_12m,
+                external=fns.declared_revenue_12m,
+                diff_percent=js_round(gap * 10) / 10,
             )
-    employees = app.financials.employees_count
-    registered = mc.company.employees_count
+        )
+    employees = financials.employees_count
+    registered = company.employees_count
     if employees > 0 and registered > 0:
         diff = (employees - registered) / registered * 100
         if abs(diff) >= 30:

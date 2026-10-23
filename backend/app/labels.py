@@ -22,8 +22,12 @@ STATUS_META: dict[ApplicationStatus, tuple[str, str]] = {
         "Предложение на других условиях",
         "Банк готов выдать кредит, но на других условиях. Сравните и решите, подходит ли предложение.",
     ),
-    "APPROVED": ("Одобрено", "Кредит одобрен. Проверьте условия и перейдите к подписанию договора."),
-    "SIGNING": ("Подписание", "Договор сформирован. Подтвердите подписание кодом."),
+    "APPROVED": ("Одобрено", "Кредит одобрен. Проверьте условия и примите или отклоните предложение банка."),
+    "OFFER_ACCEPTED": ("Условия приняты", "Вы приняли условия банка. Осталось подписать кредитный договор."),
+    "SIGNING": (
+        "Подписание",
+        "Договор сформирован. Подпишите его квалифицированной электронной подписью руководителя.",
+    ),
     "SIGNED": ("Договор подписан", "Ожидайте зачисления средств на расчётный счёт."),
     "DISBURSED": ("Средства зачислены", "Деньги на расчётном счёте. График платежей доступен ниже."),
     "REJECTED": ("Отказ", "Банк не может выдать кредит на запрошенных условиях. Причины указаны ниже."),
@@ -32,6 +36,10 @@ STATUS_META: dict[ApplicationStatus, tuple[str, str]] = {
         "Заявка закрыта по вашему решению. Можно подать новую в любой момент.",
     ),
     "CANCELLED": ("Отменена", "Заявка отменена."),
+    "EXPIRED": (
+        "Срок предложения истёк",
+        "Предложение банка не было принято вовремя. Подайте новую заявку — условия рассчитаем заново.",
+    ),
 }
 
 NEXT_STEP: dict[ApplicationStatus, str] = {
@@ -39,13 +47,15 @@ NEXT_STEP: dict[ApplicationStatus, str] = {
     "MANUAL_REVIEW": "Специалист изучит заявку, обычно до 1 рабочего дня. Если понадобятся документы, запрос появится в карточке заявки и в уведомлениях.",
     "NEED_INFO": "Ответьте на запрос банка в блоке «Что требуется от вас». После ответа проверка продолжится автоматически.",
     "COUNTER_OFFER": "Сравните запрошенные и предложенные условия и нажмите «Принять» или «Отклонить» — решение только за клиентом.",
-    "APPROVED": "Проверьте условия и перейдите к подписанию договора.",
-    "SIGNING": "Подтвердите подписание кодом на странице договора.",
+    "APPROVED": "Проверьте условия и нажмите «Принять условия» — после этого откроется договор на подпись.",
+    "OFFER_ACCEPTED": "Условия приняты — перейдите к подписанию договора.",
+    "SIGNING": "Подпишите договор квалифицированной электронной подписью руководителя на странице договора.",
     "SIGNED": "Договор подписан — деньги поступят на расчётный счёт в ближайшее время.",
     "DISBURSED": "Деньги на счёте. График платежей — в карточке заявки, держите сумму платежа на счёте заранее.",
     "REJECTED": "Причины указаны в карточке заявки. Можно подобрать другой продукт или подать заявку позже, устранив причины.",
     "CLIENT_DECLINED": "Заявка закрыта. Новую можно подать в любой момент.",
     "CANCELLED": "Заявка закрыта. Новую можно подать в любой момент.",
+    "EXPIRED": "Подайте заявку повторно — данные компании сохранены, условия рассчитаем заново.",
 }
 
 FUNNEL_STATUSES: tuple[ApplicationStatus, ...] = (
@@ -58,17 +68,34 @@ FUNNEL_STATUSES: tuple[ApplicationStatus, ...] = (
     "NEED_INFO",
     "COUNTER_OFFER",
     "APPROVED",
+    "OFFER_ACCEPTED",
     "SIGNING",
     "SIGNED",
     "DISBURSED",
     "REJECTED",
     "CLIENT_DECLINED",
     "CANCELLED",
+    "EXPIRED",
 )
 PROCESSING_STATUSES: tuple[ApplicationStatus, ...] = ("SUBMITTED", "VALIDATING", "ENRICHING", "SCORING", "DECIDING")
-AWAITING_CLIENT_STATUSES: tuple[ApplicationStatus, ...] = ("NEED_INFO", "COUNTER_OFFER", "APPROVED", "SIGNING")
-APPROVED_STATUSES: tuple[ApplicationStatus, ...] = ("APPROVED", "SIGNING", "SIGNED", "DISBURSED")
-FINAL_STATUSES: tuple[ApplicationStatus, ...] = ("SIGNED", "DISBURSED", "REJECTED", "CLIENT_DECLINED", "CANCELLED")
+AWAITING_CLIENT_STATUSES: tuple[ApplicationStatus, ...] = (
+    "NEED_INFO",
+    "COUNTER_OFFER",
+    "APPROVED",
+    "OFFER_ACCEPTED",
+    "SIGNING",
+)
+APPROVED_STATUSES: tuple[ApplicationStatus, ...] = ("APPROVED", "OFFER_ACCEPTED", "SIGNING", "SIGNED", "DISBURSED")
+CLOSED_BY_CLIENT_STATUSES: tuple[ApplicationStatus, ...] = ("CLIENT_DECLINED", "CANCELLED", "EXPIRED")
+FINAL_STATUSES: tuple[ApplicationStatus, ...] = (
+    "SIGNED",
+    "DISBURSED",
+    "REJECTED",
+    "CLIENT_DECLINED",
+    "CANCELLED",
+    "EXPIRED",
+)
+RESUBMIT_STATUSES: tuple[ApplicationStatus, ...] = ("REJECTED", "CLIENT_DECLINED", "CANCELLED", "EXPIRED")
 DECISION_STATUSES: tuple[ApplicationStatus, ...] = (
     "APPROVED",
     "COUNTER_OFFER",
@@ -106,6 +133,8 @@ COLLATERAL_LABELS = {
 }
 
 TAX_SYSTEM_LABELS = {"USN_6": "УСН 6%", "USN_15": "УСН 15%", "OSN": "ОСН", "PATENT": "Патент"}
+
+SIGNATURE_LABELS = {"PEP": "простая электронная подпись", "KEP": "квалифицированная электронная подпись"}
 
 DOCUMENT_KIND_LABELS = {
     "BANK_STATEMENT": "Выписка по счёту",

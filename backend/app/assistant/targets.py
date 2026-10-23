@@ -63,7 +63,7 @@ SCREEN_TARGETS: dict[str, dict[str, str]] = {
     "sign": {
         "contract": "текст договора",
         "sign-confirm": "галочка «С условиями договора ознакомлен(а)»",
-        "sign-code": "поле кода подтверждения",
+        "sign-certificate": "выбор сертификата квалифицированной электронной подписи",
     },
     "notifications": {"notifications-list": "список уведомлений"},
     "company": {"company-profile": "реквизиты компании", "company-loans": "действующие кредиты"},

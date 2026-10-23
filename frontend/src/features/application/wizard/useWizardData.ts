@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { applicationsApi, companyApi, queryKeys, type Application, type PatchApplicationRequest } from '@/api'
+import { ApiError, applicationsApi, companyApi, queryKeys, type Application, type PatchApplicationRequest } from '@/api'
 
 export function useApplicationQuery(id: string | undefined) {
   return useQuery({
@@ -20,10 +20,16 @@ export function useCompany() {
 export function usePatchApplication(id: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: PatchApplicationRequest) => applicationsApi.patch(id, body),
+    mutationFn: (body: PatchApplicationRequest) =>
+      applicationsApi.patch(id, body, queryClient.getQueryData<Application>(queryKeys.application(id))?.version),
     onSuccess: (application: Application) => {
       queryClient.setQueryData(queryKeys.application(id), application)
       void queryClient.invalidateQueries({ queryKey: queryKeys.applications, exact: true })
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === 'VERSION_CONFLICT') {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.application(id) })
+      }
     },
   })
 }

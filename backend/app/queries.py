@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from app.fmt import HOUR, iso, parse_ms
-from app.insights import bki_report
-from app.models import SYSTEM_ACTOR, Db, StoredApplication
+from app.fmt import HOUR, iso
+from app.models import SYSTEM_ACTOR, ApplicationRecord, DecisionRecord
+from app.repo import Db
 from app.schemas import (
     AppEvent,
     Application,
@@ -10,66 +10,114 @@ from app.schemas import (
     ApplicationStatus,
     BankApplication,
     BankApplicationShort,
+    BkiData,
     Decision,
+    EgrulData,
     Enrichment,
+    FnsData,
 )
 from app.scoring import compute_discrepancies
 
 
-def to_short(record: StoredApplication) -> ApplicationShort:
-    app = record.app
-    return ApplicationShort(
-        id=app.id,
-        number=app.number,
-        product_code=app.product.code,
-        product_name=app.product.name,
-        amount=app.amount,
-        term=app.term,
-        status=app.status,
-        created_at=app.created_at,
-        updated_at=app.updated_at,
+def to_application(record: ApplicationRecord) -> Application:
+    decision = record.decision
+    return Application(
+        id=record.id,
+        number=record.number,
+        status=record.status,
+        product=record.product,
+        amount=record.amount,
+        term=record.term,
+        purpose=record.purpose,
+        purpose_type=record.purpose_type,
+        company=record.company,
+        company_confirmed=record.company_confirmed,
+        financials=record.financials,
+        documents=[document.model() for document in record.documents],
+        consents=record.consents,
+        offer=record.offer.model() if record.offer else None,
+        info_request=record.info_request.model() if record.info_request else None,
+        decision=decision.model() if decision else None,
+        contract=record.contract.ref() if record.contract else None,
+        disbursement=record.disbursement.model() if record.disbursement else None,
+        previous_application_id=record.previous_application_id,
+        version=record.version,
+        revision=record.revision,
+        created_at=iso(record.created_at),
+        submitted_at=iso(record.submitted_at) if record.submitted_at is not None else None,
+        updated_at=iso(record.updated_at),
     )
 
 
-def to_bank_short(record: StoredApplication) -> BankApplicationShort:
-    app = record.app
+def to_short(record: ApplicationRecord) -> ApplicationShort:
+    return ApplicationShort(
+        id=record.id,
+        number=record.number,
+        product_code=record.product.code,
+        product_name=record.product.name,
+        amount=record.amount,
+        term=record.term,
+        status=record.status,
+        created_at=iso(record.created_at),
+        updated_at=iso(record.updated_at),
+    )
+
+
+def to_bank_short(record: ApplicationRecord) -> BankApplicationShort:
+    scoring = record.scoring
     return BankApplicationShort(
-        id=app.id,
-        number=app.number,
-        company_name=app.company.name,
-        inn=app.company.inn,
-        product_code=app.product.code,
-        product_name=app.product.name,
-        amount=app.amount,
-        term=app.term,
-        status=app.status,
-        grade=record.scoring.grade if record.scoring else None,
-        score=record.scoring.score if record.scoring else None,
+        id=record.id,
+        number=record.number,
+        company_name=record.company.name,
+        inn=record.company.inn,
+        product_code=record.product.code,
+        product_name=record.product.name,
+        amount=record.amount,
+        term=record.term,
+        status=record.status,
+        grade=scoring.grade if scoring else None,
+        score=scoring.score if scoring else None,
         waiting_since=iso(record.stage_entered_at),
         assigned_to=record.assigned_to,
     )
 
 
-def to_bank_application(db: Db, record: StoredApplication, now: int) -> BankApplication:
-    mc = db.find_company(record.company_id)
-    enrichment = Enrichment(egrul=mc.egrul, fns=mc.fns, bki=bki_report(db, mc, now)) if mc and record.enriched else None
+def enrichment_of(record: ApplicationRecord) -> Enrichment | None:
+    revision = record.current_revision
+    if revision is None:
+        return None
+    found = {
+        check.check_type: check.result
+        for check in record.checks
+        if check.revision_id == revision.id and check.status != "ERROR" and check.result is not None
+    }
+    if not {"EGRUL", "FNS", "BKI"} <= set(found):
+        return None
+    return Enrichment(
+        egrul=EgrulData.model_validate(found["EGRUL"]),
+        fns=FnsData.model_validate(found["FNS"]),
+        bki=BkiData.model_validate(found["BKI"]),
+    )
+
+
+def to_bank_application(record: ApplicationRecord) -> BankApplication:
+    enrichment = enrichment_of(record)
     return BankApplication(
-        **record.app.model_dump(),
+        **to_application(record).model_dump(),
         enrichment=enrichment,
         scoring=record.scoring,
         recommendation=record.recommendation,
-        discrepancies=compute_discrepancies(mc, record.app) if mc else [],
+        discrepancies=compute_discrepancies(enrichment.fns, record.company, record.financials) if enrichment else [],
         assigned_to=record.assigned_to,
         assignee_id=record.assignee_id,
+        checks=[check.model() for check in record.checks],
+        revisions=[revision.summary() for revision in record.revisions],
+        info_requests=[request.model() for request in record.info_requests],
     )
 
 
 def events_of(db: Db, application_id: str) -> list[AppEvent]:
-    events = sorted(
-        (event for event in db.events if event.application_id == application_id),
-        key=lambda event: event.created_at,
-    )
-    return [AppEvent.model_validate(event.model_dump(exclude={"application_id"})) for event in events]
+    return [event.model() for event in db.events_of(application_id)]
 
 
 CLIENT_HIDDEN_STAGES: frozenset[ApplicationStatus] = frozenset({"VALIDATING", "ENRICHING", "SCORING", "DECIDING"})
@@ -83,8 +131,9 @@ CLIENT_REASONS: dict[str, str | None] = {
     "Клиент принял предложение банка": "Вы приняли предложение банка",
     "Клиент отклонил предложение банка": None,
     "Заявка отменена клиентом": None,
-    "Запрошен код подтверждения": "Договор сформирован, код подтверждения — в кабинете",
+    "Договор направлен на подписание": "Договор сформирован и ждёт подписи",
     "Договор подписан простой электронной подписью": "Вы подписали договор кодом из кабинета",
+    "Договор подписан квалифицированной электронной подписью": "Вы подписали договор квалифицированной электронной подписью",
 }
 
 
@@ -92,11 +141,12 @@ def client_decision(decision: Decision | None) -> Decision | None:
     if not decision or decision.type == "MANUAL_REVIEW":
         return None
     made_by = AUTOMATIC_DECISION if decision.made_by == SYSTEM_ACTOR else BANK_SPECIALIST
-    return decision.model_copy(update={"made_by": made_by})
+    return decision.model_copy(update={"made_by": made_by, "reason_codes": []})
 
 
-def client_application(record: StoredApplication) -> Application:
-    return record.app.model_copy(update={"decision": client_decision(record.app.decision)})
+def client_application(record: ApplicationRecord) -> Application:
+    application = to_application(record)
+    return application.model_copy(update={"decision": client_decision(application.decision)})
 
 
 def client_events(db: Db, application_id: str) -> list[AppEvent]:
@@ -113,14 +163,18 @@ def client_events(db: Db, application_id: str) -> list[AppEvent]:
     return result
 
 
+def is_automatic(decision: DecisionRecord | None) -> bool:
+    return decision is not None and decision.actor_type == "SYSTEM"
+
+
 @dataclass(frozen=True)
 class ReviewSpan:
     hours: float
     resolved_by: str
 
 
-def review_span(db: Db, record: StoredApplication) -> ReviewSpan | None:
-    events = events_of(db, record.app.id)
+def review_span(db: Db, record: ApplicationRecord) -> ReviewSpan | None:
+    events = db.events_of(record.id)
     entered = next((event for event in events if event.to_status == "MANUAL_REVIEW"), None)
     if not entered:
         return None
@@ -136,4 +190,4 @@ def review_span(db: Db, record: StoredApplication) -> ReviewSpan | None:
     )
     if not resolved:
         return None
-    return ReviewSpan((parse_ms(resolved.created_at) - parse_ms(entered.created_at)) / HOUR, resolved.actor_name)
+    return ReviewSpan((resolved.created_at - entered.created_at) / HOUR, resolved.actor_name)

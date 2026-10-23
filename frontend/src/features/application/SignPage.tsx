@@ -1,21 +1,22 @@
 import { useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpRight, CheckCircle2, FileSignature, KeyRound, LayoutGrid } from 'lucide-react'
-import { ApiError, applicationsApi, queryKeys, type Application, type ApplicationStatus } from '@/api'
+import { ArrowUpRight, CheckCircle2, FileSignature, FlaskConical, KeyRound, LayoutGrid, ShieldCheck } from 'lucide-react'
+import { applicationsApi, queryKeys, type Application, type ApplicationStatus, type SigningCertificate } from '@/api'
 import { AskButton } from '@/features/assistant/AskButton'
 import { useAssistantScreen } from '@/features/assistant/AssistantProvider'
 import { creditSummary } from '@/shared/lib/annuity'
-import { formatTerm } from '@/shared/lib/dates'
+import { formatDate, formatTerm } from '@/shared/lib/dates'
 import { formatMoney, formatRate } from '@/shared/lib/money'
 import {
   Alert,
+  Badge,
   Button,
   ButtonLink,
   Card,
   Checkbox,
+  ChoiceCard,
   ErrorState,
-  Field,
   Input,
   PageHeader,
   PageLoader,
@@ -27,16 +28,16 @@ import {
 import { useApplication, useApplicationCache } from './details/useApplication'
 import styles from './SignPage.module.css'
 
-const ALLOWED: ApplicationStatus[] = ['APPROVED', 'SIGNING', 'SIGNED', 'DISBURSED']
+const ALLOWED: ApplicationStatus[] = ['OFFER_ACCEPTED', 'SIGNING', 'SIGNED', 'DISBURSED']
 
 const STEPS = [
   { key: 'read', title: 'Ознакомление' },
-  { key: 'confirm', title: 'Подтверждение' },
+  { key: 'confirm', title: 'Подпись КЭП' },
   { key: 'payout', title: 'Зачисление' },
 ]
 
 function stepIndex(status: ApplicationStatus): number {
-  if (status === 'APPROVED') return 0
+  if (status === 'OFFER_ACCEPTED') return 0
   if (status === 'SIGNING') return 1
   return 2
 }
@@ -103,16 +104,13 @@ function ContractView({ applicationId }: { applicationId: string }) {
   )
 }
 
-function ReviewStep({ application, onSigned }: { application: Application; onSigned: (code: string) => void }) {
+function ReviewStep({ application }: { application: Application }) {
   const queryClient = useQueryClient()
   const [agreed, setAgreed] = useState(false)
   const [touched, setTouched] = useState(false)
   const sign = useMutation({
     mutationFn: () => applicationsApi.sign(application.id),
-    onSuccess: (response) => {
-      onSigned(response.confirmation_code)
-      void queryClient.invalidateQueries({ queryKey: queryKeys.application(application.id) })
-    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.application(application.id) }),
   })
   return (
     <>
@@ -151,90 +149,150 @@ function ReviewStep({ application, onSigned }: { application: Application; onSig
   )
 }
 
-function ConfirmStep({
-  application,
-  generated,
-  onGenerated,
+function CertificateOption({
+  certificate,
+  selected,
+  onSelect,
 }: {
-  application: Application
-  generated: string | null
-  onGenerated: (code: string) => void
+  certificate: SigningCertificate
+  selected: boolean
+  onSelect: () => void
 }) {
-  const updateCache = useApplicationCache(application.id)
-  const [code, setCode] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const invalid = Boolean(certificate.problem)
+  return (
+    <ChoiceCard
+      selected={selected}
+      onSelect={onSelect}
+      disabled={invalid}
+      icon={<ShieldCheck size={18} />}
+      badge={<Badge tone={invalid ? 'danger' : 'success'}>{invalid ? 'Недействителен' : 'Действителен'}</Badge>}
+      title={certificate.owner_name}
+      description={`${certificate.owner_title} · ${certificate.organization} · ИНН ${certificate.inn}`}
+      meta={
+        certificate.problem ??
+        `${certificate.issuer} · № ${certificate.serial.slice(0, 8)}…${certificate.serial.slice(-4)} · до ${formatDate(certificate.valid_to)}`
+      }
+    />
+  )
+}
 
-  const regenerate = useMutation({
-    mutationFn: () => applicationsApi.sign(application.id),
-    onSuccess: (response) => onGenerated(response.confirmation_code),
+function CodeSignature({ application }: { application: Application }) {
+  const updateCache = useApplicationCache(application.id)
+  const [open, setOpen] = useState(false)
+  const [code, setCode] = useState('')
+  const issue = useMutation({ mutationFn: () => applicationsApi.sign(application.id) })
+  const confirm = useMutation({
+    mutationFn: () => applicationsApi.confirmSign(application.id, code.trim()),
+    onSuccess: (next) => updateCache(next),
   })
 
-  const confirm = useMutation({
-    mutationFn: () => applicationsApi.confirmSign(application.id, code),
-    onSuccess: (next) => {
-      setError(null)
-      updateCache(next)
-    },
-    onError: (failure) => {
-      setError(
-        failure instanceof ApiError && failure.status === 400
-          ? 'Неверный код. Проверьте и попробуйте ещё раз.'
-          : 'Не удалось подтвердить подписание. Попробуйте ещё раз.',
-      )
-    },
+  if (!open) {
+    return (
+      <Button
+        variant="link"
+        onClick={() => {
+          setOpen(true)
+          issue.mutate()
+        }}
+      >
+        Нет КЭП под рукой? Подписать кодом подтверждения
+      </Button>
+    )
+  }
+
+  return (
+    <div className={styles.code} data-assist="sign-code">
+      <Alert tone="neutral" icon={<FlaskConical size={18} />} title="Простая электронная подпись — демо">
+        В рабочей версии код пришёл бы push-уведомлением в приложение банка. Здесь SMS не отправляется, код показан на
+        экране: <strong className="tabular">{issue.data?.confirmation_code ?? '…'}</strong>
+      </Alert>
+      <div className={styles.actions}>
+        <Input
+          aria-label="Код подтверждения"
+          inputMode="numeric"
+          maxLength={6}
+          placeholder="Код"
+          value={code}
+          onChange={(event) => setCode(event.target.value.replace(/\D/g, ''))}
+        />
+        <Button loading={confirm.isPending} disabled={!code.trim()} onClick={() => confirm.mutate()}>
+          Подписать кодом
+        </Button>
+      </div>
+      {(issue.isError || confirm.isError) && (
+        <Alert tone="danger" title="Не удалось подписать договор">
+          {(confirm.error ?? issue.error)?.message ?? 'Попробуйте ещё раз'}
+        </Alert>
+      )}
+    </div>
+  )
+}
+
+function SignatureStep({ application }: { application: Application }) {
+  const updateCache = useApplicationCache(application.id)
+  const [chosen, setChosen] = useState<string | null>(null)
+  const certificates = useQuery({
+    queryKey: queryKeys.certificates(application.id),
+    queryFn: () => applicationsApi.certificates(application.id),
+  })
+  const usable = certificates.data?.filter((item) => !item.problem) ?? []
+  const selected = chosen ?? (usable.length === 1 ? usable[0].id : null)
+
+  const sign = useMutation({
+    mutationFn: (certificateId: string) => applicationsApi.signKep(application.id, certificateId),
+    onSuccess: (next) => updateCache(next),
   })
 
   return (
-    <Card className={styles.actionCard} title="Подтвердите подписание" eyebrow="Шаг 2 из 3">
-      {generated ? (
-        <Alert tone="info" icon={<KeyRound size={18} />} title="Код подтверждения сформирован в кабинете">
-          Демо-режим: введите код <strong className={styles.code}>{generated}</strong>. В рабочей версии код приходит в защищённое
-          приложение банка — без SMS и почты.
-        </Alert>
+    <Card className={styles.actionCard} title="Подпишите договор КЭП" eyebrow="Шаг 2 из 3">
+      <Alert tone="info" icon={<KeyRound size={18} />} title="Нужна квалифицированная электронная подпись руководителя">
+        Договор кредита подписывает лично руководитель компании или индивидуальный предприниматель — сертификатом УЦ ФНС
+        России. Такая подпись равна собственноручной.
+      </Alert>
+      {certificates.isPending ? (
+        <div className={styles.certificates}>
+          <Skeleton height={112} />
+          <Skeleton height={112} />
+        </div>
+      ) : certificates.isError ? (
+        <ErrorState error={certificates.error} onRetry={() => void certificates.refetch()} />
       ) : (
-        <Alert
-          tone="neutral"
-          icon={<KeyRound size={18} />}
-          title="Код подтверждения уже сформирован"
-          actions={
-            <Button size="sm" variant="secondary" loading={regenerate.isPending} onClick={() => regenerate.mutate()}>
-              Сформировать новый код
-            </Button>
-          }
-        >
-          Если вы не видите код, сформируйте новый — он появится здесь же, в кабинете.
-        </Alert>
-      )}
-      <form
-        className={styles.codeForm}
-        onSubmit={(event) => {
-          event.preventDefault()
-          if (code.length === 4) confirm.mutate()
-        }}
-      >
-        <Field label="Код подтверждения" error={error ?? undefined} assist="sign-code">
-          {(id) => (
-            <Input
-              id={id}
-              value={code}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={4}
-              placeholder="••••"
-              className={styles.codeInput}
-              invalid={Boolean(error)}
-              autoFocus
-              onChange={(event) => {
-                setError(null)
-                setCode(event.target.value.replace(/\D/g, '').slice(0, 4))
+        <div className={styles.certificates} data-assist="sign-certificate">
+          {certificates.data.map((certificate) => (
+            <CertificateOption
+              key={certificate.id}
+              certificate={certificate}
+              selected={selected === certificate.id}
+              onSelect={() => {
+                sign.reset()
+                setChosen(certificate.id)
               }}
             />
-          )}
-        </Field>
-        <Button type="submit" size="lg" disabled={code.length !== 4} loading={confirm.isPending} iconRight={<CheckCircle2 size={18} />}>
-          Подтвердить
+          ))}
+        </div>
+      )}
+      {sign.isError && (
+        <Alert tone="danger" title="Не удалось подписать договор">
+          {sign.error instanceof Error ? sign.error.message : 'Попробуйте ещё раз'}
+        </Alert>
+      )}
+      <div className={styles.actions}>
+        <Button
+          size="lg"
+          disabled={!selected}
+          loading={sign.isPending}
+          iconRight={<FileSignature size={18} />}
+          onClick={() => {
+            if (selected) sign.mutate(selected)
+          }}
+        >
+          Подписать КЭП
         </Button>
-      </form>
+        {certificates.isSuccess && usable.length === 0 && (
+          <span className={styles.hint}>На носителе нет действующего сертификата руководителя</span>
+        )}
+      </div>
+      <CodeSignature application={application} />
     </Card>
   )
 }
@@ -252,7 +310,9 @@ function DisbursingStep() {
 }
 
 function DoneStep({ application }: { application: Application }) {
-  const amount = application.offer?.amount ?? application.amount
+  const amount = application.disbursement?.amount ?? application.offer?.amount ?? application.amount
+  const certificate = application.contract?.certificate
+  const disbursement = application.disbursement
   return (
     <Card className={styles.done} padding="lg">
       <span className={styles.doneIcon}>
@@ -264,6 +324,18 @@ function DoneStep({ application }: { application: Application }) {
       <p className={styles.muted}>
         {application.contract ? `По договору № ${application.contract.number}. ` : ''}Деньги уже на расчётном счёте компании.
       </p>
+      {certificate && (
+        <p className={styles.signature}>
+          <ShieldCheck size={16} />
+          Подписан КЭП: {certificate.owner_name}, сертификат № {certificate.serial}, {certificate.issuer}
+        </p>
+      )}
+      {disbursement && (
+        <p className={styles.signature}>
+          <FlaskConical size={16} />
+          Выдача смоделирована: операция {disbursement.operation_number}, реальный платёж не проводился
+        </p>
+      )}
       <div className={styles.doneActions}>
         <ButtonLink to={`/app/applications/${application.id}`} iconRight={<ArrowUpRight size={16} />}>
           График платежей
@@ -280,7 +352,6 @@ export function SignPage() {
   const { id = '' } = useParams()
   const query = useApplication(id, { interval: 1000 })
   const application = query.data
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null)
 
   useAssistantScreen({
     screen: 'sign',
@@ -309,11 +380,13 @@ export function SignPage() {
         description={finished ? undefined : 'Проверьте условия, подтвердите подписание — и деньги поступят на расчётный счёт.'}
       />
       <Stepper steps={STEPS} current={finished ? 3 : current} completed={finished ? 2 : current - 1} />
+      <Alert tone="neutral" icon={<FlaskConical size={18} />} title="Демо-режим">
+        Подписание и выдача смоделированы: КриптоПро, удостоверяющий центр и банковские системы не вызываются, деньги не
+        перечисляются.
+      </Alert>
       {!finished && <Terms application={application} />}
-      {application.status === 'APPROVED' && <ReviewStep application={application} onSigned={setGeneratedCode} />}
-      {application.status === 'SIGNING' && (
-        <ConfirmStep application={application} generated={generatedCode} onGenerated={setGeneratedCode} />
-      )}
+      {application.status === 'OFFER_ACCEPTED' && <ReviewStep application={application} />}
+      {application.status === 'SIGNING' && <SignatureStep application={application} />}
       {application.status === 'SIGNED' && <DisbursingStep />}
       {finished && <DoneStep application={application} />}
     </div>

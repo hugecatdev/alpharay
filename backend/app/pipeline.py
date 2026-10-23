@@ -1,251 +1,548 @@
-from dataclasses import dataclass, field
+import hashlib
+import logging
+from dataclasses import dataclass
 
 from app.annuity import credit_summary
 from app.audit import record_audit
-from app.fmt import DAY, clamp, date_ru, iso, money, rate_text
-from app.insights import company_loans, derived_financials
-from app.models import SYSTEM_ACTOR, Db, StoredApplication, StoredEvent, StoredNotification, StoredUser, uid
+from app.decision import Case, Verdict, decide, recommend, unavailable
+from app.fmt import DAY, date_ru, local, money, rate_text
+from app.insights import derived_financials
+from app.integrations import (
+    SOURCE_NAMES,
+    CheckOutcome,
+    IntegrationError,
+    account_check,
+    bki_check,
+    bki_failure,
+    egrul_check,
+    fns_check,
+    gateway,
+)
+from app.logs import current_correlation
+from app.models import (
+    SYSTEM_ACTOR,
+    ApplicationRecord,
+    AssessmentRecord,
+    CheckRecord,
+    CompanyRecord,
+    ContractRecord,
+    DecisionRecord,
+    DisbursementRecord,
+    EventRecord,
+    InfoRequestRecord,
+    NotificationRecord,
+    OfferRecord,
+    RevisionRecord,
+    UserRecord,
+    uid,
+)
 from app.products import okved_eligible
+from app.repo import Db
 from app.schemas import (
+    ActiveLoan,
     ActorType,
     ApplicationStatus,
-    ContractRef,
-    Decision,
-    DecisionType,
-    InfoRequest,
-    InfoRequestItem,
+    BkiData,
+    Certificate,
+    Company,
+    Consents,
+    EgrulData,
+    FnsData,
+    InfoAnswer,
     NotificationType,
-    Offer,
     OfferRequested,
+    Product,
+    RevisionReason,
+    SignatureType,
+    TurnoverMonth,
 )
-from app.scoring import (
-    LOW_SCORE_REASON,
-    RISK_MARKUP_REASON,
-    client_approval_reasons,
-    compute_recommendation,
-    compute_scoring,
-    counter_amount,
-)
+from app.scoring import MODEL_VERSION, Sources, compute_scoring
+
+logger = logging.getLogger("alpharay.pipeline")
 
 STAGE_MS = 2000
-MOCK_FAIL_ENRICH_MS = 6000
+BKI_RETRY_MS = 2000
+BKI_ATTEMPTS = 3
 DISBURSE_DELAY_MS = 3000
 CONFIRMATION_CODE = "4821"
-CLIENT_NOTIFIED_STAGE: ApplicationStatus = "VALIDATING"
+MAX_STEPS = 24
 
-NEXT_STAGE: dict[ApplicationStatus, ApplicationStatus] = {
-    "SUBMITTED": "VALIDATING",
-    "VALIDATING": "ENRICHING",
-    "ENRICHING": "SCORING",
-    "SCORING": "DECIDING",
+PROCESSING: tuple[ApplicationStatus, ...] = ("SUBMITTED", "VALIDATING", "ENRICHING", "SCORING", "DECIDING")
+OFFER_STATUSES: tuple[ApplicationStatus, ...] = ("APPROVED", "COUNTER_OFFER")
+
+TRANSITIONS: dict[str, frozenset[str]] = {
+    "DRAFT": frozenset({"SUBMITTED", "CANCELLED"}),
+    "SUBMITTED": frozenset({"VALIDATING", "CANCELLED"}),
+    "VALIDATING": frozenset({"ENRICHING", "CANCELLED"}),
+    "ENRICHING": frozenset({"SCORING", "MANUAL_REVIEW", "CANCELLED"}),
+    "SCORING": frozenset({"DECIDING", "CANCELLED"}),
+    "DECIDING": frozenset({"APPROVED", "COUNTER_OFFER", "NEED_INFO", "MANUAL_REVIEW", "REJECTED", "CANCELLED"}),
+    "MANUAL_REVIEW": frozenset({"APPROVED", "COUNTER_OFFER", "NEED_INFO", "REJECTED", "CANCELLED"}),
+    "NEED_INFO": frozenset({"SUBMITTED", "CANCELLED"}),
+    "APPROVED": frozenset({"OFFER_ACCEPTED", "CLIENT_DECLINED", "EXPIRED", "CANCELLED"}),
+    "COUNTER_OFFER": frozenset({"OFFER_ACCEPTED", "CLIENT_DECLINED", "EXPIRED", "CANCELLED"}),
+    "OFFER_ACCEPTED": frozenset({"SIGNING", "CANCELLED"}),
+    "SIGNING": frozenset({"SIGNED", "CANCELLED"}),
+    "SIGNED": frozenset({"DISBURSED"}),
+    "DISBURSED": frozenset(),
+    "REJECTED": frozenset(),
+    "CLIENT_DECLINED": frozenset(),
+    "CANCELLED": frozenset(),
+    "EXPIRED": frozenset(),
 }
+CANCELLABLE: tuple[ApplicationStatus, ...] = tuple(
+    status for status, targets in TRANSITIONS.items() if "CANCELLED" in targets
+)
 
-STAGE_COPY: dict[ApplicationStatus, tuple[str, str, str]] = {
-    "VALIDATING": (
-        "Заявка принята в обработку",
-        "Заявка на рассмотрении",
-        "Проверяем данные компании и оцениваем заявку. Обычно это занимает меньше минуты — статус обновится сам.",
-    ),
-    "ENRICHING": (
-        "Проверка полноты и корректности пройдена",
-        "Проверка данных пройдена",
-        "Запрашиваем сведения в ЕГРЮЛ, ФНС и бюро кредитных историй.",
-    ),
-    "SCORING": (
-        "Получены данные ЕГРЮЛ, ФНС и БКИ",
-        "Данные из внешних источников получены",
-        "Оцениваем финансовое состояние бизнеса.",
-    ),
-    "DECIDING": (
-        "Скоринговая оценка рассчитана",
-        "Оценка завершена",
-        "Формируем решение по заявке.",
-    ),
+STAGE_REASONS: dict[ApplicationStatus, str] = {
+    "VALIDATING": "Заявка принята в обработку",
+    "ENRICHING": "Проверка полноты и корректности пройдена",
+    "SCORING": "Получены данные ЕГРЮЛ, ФНС и БКИ",
+    "DECIDING": "Скоринговая оценка рассчитана",
 }
+REVIEW_STARTED = (
+    "Заявка на рассмотрении",
+    "Проверяем данные компании и оцениваем заявку. Обычно это занимает меньше минуты — статус обновится сам.",
+)
 
-CLIENT5_INFO_ITEMS = [
-    InfoRequestItem(code="revenue_12m", label="Уточните выручку за 12 месяцев", type="number"),
-    InfoRequestItem(code="statement_6m", label="Выписка по счёту за 6 месяцев", type="document"),
-]
+
+class TransitionError(Exception):
+    def __init__(self, source: str, target: str) -> None:
+        super().__init__(f"{source} → {target}")
+        self.source = source
+        self.target = target
 
 
-@dataclass
-class DecisionInput:
-    type: DecisionType
-    reasons: list[str]
-    amount: int | None = None
-    term: int | None = None
-    rate: float | None = None
-    items: list[InfoRequestItem] = field(default_factory=list)
-    comment: str = ""
+@dataclass(frozen=True)
+class Actor:
+    type: ActorType
+    name: str
+    id: str | None = None
+
+
+SYSTEM = Actor("SYSTEM", SYSTEM_ACTOR)
+
+
+def actor_of(user: UserRecord) -> Actor:
+    return Actor("UNDERWRITER" if user.is_bank else "CLIENT", user.full_name, user.id)
 
 
 def add_event(
     db: Db,
-    record: StoredApplication,
-    from_status: ApplicationStatus | None,
-    to_status: ApplicationStatus,
-    actor_type: ActorType,
-    actor_name: str,
+    record: ApplicationRecord,
+    from_status: str | None,
+    to_status: str,
+    actor: Actor,
     reason: str | None,
     at: int,
 ) -> None:
-    db.events.append(
-        StoredEvent(
+    db.add(
+        EventRecord(
             id=uid(),
-            application_id=record.app.id,
+            application_id=record.id,
             from_status=from_status,
             to_status=to_status,
-            actor_type=actor_type,
-            actor_name=actor_name,
+            actor_type=actor.type,
+            actor_id=actor.id,
+            actor_name=actor.name,
             reason=reason,
-            created_at=iso(at),
+            correlation_id=current_correlation(),
+            created_at=at,
         )
     )
 
 
-def notify(db: Db, record: StoredApplication, kind: NotificationType, title: str, body: str, at: int) -> None:
+def notify(db: Db, record: ApplicationRecord, kind: NotificationType, title: str, body: str, at: int) -> None:
     if not record.user_id:
         return
-    db.notifications.append(
-        StoredNotification(
+    db.add(
+        NotificationRecord(
             id=uid(),
             user_id=record.user_id,
-            application_id=record.app.id,
+            application_id=record.id,
             type=kind,
             title=title,
             body=body,
             is_read=False,
-            created_at=iso(at),
+            created_at=at,
         )
     )
 
 
+def due_time(db: Db, record: ApplicationRecord, at: int) -> int | None:
+    if record.status in PROCESSING:
+        return at + STAGE_MS
+    offer = record.offer
+    if record.status in OFFER_STATUSES and offer and offer.status == "PENDING":
+        return offer.valid_until
+    if record.status == "SIGNED" and db.policy.auto_disbursement:
+        return at + DISBURSE_DELAY_MS
+    return None
+
+
+def touch(record: ApplicationRecord, at: int) -> None:
+    record.updated_at = at
+    record.version += 1
+
+
 def set_status(
     db: Db,
-    record: StoredApplication,
+    record: ApplicationRecord,
     to_status: ApplicationStatus,
     at: int,
-    actor_type: ActorType,
-    actor_name: str,
+    actor: Actor,
     reason: str | None,
 ) -> None:
-    from_status = record.app.status
-    record.app.status = to_status
-    record.app.updated_at = iso(at)
+    from_status = record.status
+    if to_status not in TRANSITIONS.get(from_status, frozenset()):
+        raise TransitionError(from_status, to_status)
+    record.status = to_status
     record.stage_entered_at = at
-    add_event(db, record, from_status, to_status, actor_type, actor_name, reason, at)
+    record.failures = 0
+    touch(record, at)
+    record.next_run_at = due_time(db, record, at)
+    add_event(db, record, from_status, to_status, actor, reason, at)
 
 
-def contract_number(record: StoredApplication) -> str:
-    return f"ДК-{record.app.number.replace('КР-', '')}"
+def contract_number(record: ApplicationRecord) -> str:
+    return f"ДК-{record.number.replace('КР-', '')}"
 
 
-def ensure_contract(record: StoredApplication) -> ContractRef:
-    if not record.app.contract:
-        record.app.contract = ContractRef(number=contract_number(record), signed_at=None)
-    return record.app.contract
+def settlement_account(company: Company) -> str:
+    prefix = "40802810" if company.legal_form == "IP" else "40702810"
+    digits = str(int(hashlib.sha256(company.inn.encode()).hexdigest(), 16))
+    return prefix + digits[:12]
+
+
+def snapshot(
+    db: Db,
+    record: ApplicationRecord,
+    reason: RevisionReason,
+    actor: Actor,
+    at: int,
+    answers: list[InfoAnswer] | None = None,
+) -> RevisionRecord:
+    record.revision += 1
+    revision = RevisionRecord(
+        id=uid(),
+        application_id=record.id,
+        sequence=record.revision,
+        reason=reason,
+        product=record.product,
+        company=record.company,
+        amount=record.amount,
+        term=record.term,
+        purpose=record.purpose,
+        purpose_type=record.purpose_type,
+        financials=record.financials,
+        consents=record.consents,
+        documents=[document.model() for document in record.documents],
+        answers=list(answers or []),
+        author_id=actor.id,
+        author_name=actor.name,
+        created_at=at,
+    )
+    record.revisions.append(revision)
+    return revision
+
+
+def record_check(
+    record: ApplicationRecord, revision: RevisionRecord, outcome: CheckOutcome, attempt: int, at: int
+) -> CheckRecord:
+    check = CheckRecord(
+        id=uid(),
+        application_id=record.id,
+        revision_id=revision.id,
+        check_type=outcome.type,
+        source=SOURCE_NAMES[outcome.type],
+        status=outcome.status,
+        attempt=attempt,
+        result=outcome.data,
+        summary=outcome.summary,
+        error=outcome.error,
+        checked_at=at,
+    )
+    record.checks.append(check)
+    return check
+
+
+def revision_checks(record: ApplicationRecord, revision: RevisionRecord) -> dict[str, CheckRecord]:
+    latest: dict[str, CheckRecord] = {}
+    for check in record.checks:
+        if check.revision_id == revision.id and check.status != "ERROR":
+            latest[check.check_type] = check
+    return latest
+
+
+def bki_attempts(record: ApplicationRecord, revision: RevisionRecord) -> int:
+    return sum(
+        1
+        for check in record.checks
+        if check.revision_id == revision.id and check.check_type == "BKI" and check.status == "ERROR"
+    )
+
+
+def require_revision(record: ApplicationRecord) -> RevisionRecord:
+    revision = record.current_revision
+    if revision is None:
+        raise LookupError(f"У заявки {record.number} нет снимка данных")
+    return revision
+
+
+def submit_missing(db: Db, record: ApplicationRecord) -> list[str]:
+    product = record.product
+    missing: list[str] = []
+    catalog = db.find_product(product.code)
+    if not catalog or not catalog.active:
+        missing.append("product")
+    elif not okved_eligible(catalog, record.company.okved_main):
+        missing.append("product_eligibility")
+    if not (product.min_amount <= record.amount <= product.max_amount):
+        missing.append("amount")
+    if not (product.min_term <= record.term <= product.max_term):
+        missing.append("term")
+    if not record.company_confirmed:
+        missing.append("company_confirmed")
+    if not record.financials:
+        missing.append("financials")
+    if product.requires_invoice and not any(doc.kind == "EQUIPMENT_INVOICE" for doc in record.documents):
+        missing.append("equipment_invoice")
+    if not record.consents.bki:
+        missing.append("consent_bki")
+    if not record.consents.personal_data:
+        missing.append("consent_personal_data")
+    if not record.consents.risks:
+        missing.append("consent_risks")
+    return missing
+
+
+def create_draft(
+    db: Db,
+    mc: CompanyRecord,
+    product: Product,
+    amount: int,
+    term: int,
+    purpose: str,
+    purpose_type: str | None,
+    author: UserRecord | None,
+    at: int,
+    previous: ApplicationRecord | None = None,
+) -> ApplicationRecord:
+    record = ApplicationRecord(
+        id=uid(),
+        number=db.next_number(),
+        status="DRAFT",
+        company_id=mc.id,
+        user_id=author.id if author else None,
+        product_code=product.code,
+        product=product.model_copy(deep=True),
+        company=mc.company,
+        amount=amount,
+        term=term,
+        purpose=purpose,
+        purpose_type=purpose_type,
+        company_confirmed=False,
+        financials=previous.financials if previous else None,
+        consents=Consents(),
+        previous_application_id=previous.id if previous else None,
+        revision=0,
+        version=1,
+        mock_fail=0,
+        failures=0,
+        stage_entered_at=at,
+        next_run_at=None,
+        created_at=at,
+        submitted_at=None,
+        updated_at=at,
+    )
+    db.add(record)
+    actor = actor_of(author) if author else Actor("CLIENT", mc.head_name)
+    reason = f"Повторная подача по заявке {previous.number}" if previous else "Создан черновик заявки"
+    add_event(db, record, None, "DRAFT", actor, reason, at)
+    return record
+
+
+def submit_application(db: Db, record: ApplicationRecord, actor: Actor, now: int, mock_fail: int) -> None:
+    record.mock_fail = mock_fail
+    record.submitted_at = now
+    snapshot(db, record, "SUBMITTED", actor, now)
+    set_status(db, record, "SUBMITTED", now, actor, "Заявка отправлена клиентом")
+    notify(
+        db,
+        record,
+        "APPLICATION_SUBMITTED",
+        "Заявка отправлена",
+        f"Заявка {record.number} принята банком. Статус обновляется автоматически.",
+        now,
+    )
+
+
+def provide_info(
+    db: Db,
+    record: ApplicationRecord,
+    request: InfoRequestRecord,
+    answers: list[InfoAnswer],
+    actor: Actor,
+    at: int,
+) -> None:
+    request.status = "ANSWERED"
+    request.answers = answers
+    request.answered_at = at
+    request.answered_by = actor.id
+    revision = snapshot(db, record, "INFO_PROVIDED", actor, at, answers)
+    request.reply_revision_id = revision.id
+    record.mock_fail = 0
+    set_status(db, record, "SUBMITTED", at, actor, "Клиент дополнил заявку")
+    notify(db, record, "APPLICATION_SUBMITTED", "Заявка дополнена", "Спасибо! Банк продолжил рассмотрение заявки.", at)
+
+
+def cancel_application(db: Db, record: ApplicationRecord, actor: Actor, at: int) -> None:
+    offer = record.offer
+    if offer and offer.status == "PENDING":
+        offer.status = "DECLINED"
+        offer.responded_at = at
+        offer.responded_by = actor.id
+    for request in record.info_requests:
+        if request.status == "OPEN":
+            request.status = "CANCELLED"
+    set_status(db, record, "CANCELLED", at, actor, "Заявка отменена клиентом")
 
 
 def create_offer(
-    record: StoredApplication,
+    db: Db,
+    record: ApplicationRecord,
+    decision: DecisionRecord,
     amount: int,
     term: int,
     rate: float,
     is_counter: bool,
     at: int,
-    valid_days: int,
-) -> Offer:
-    base = record.app.product.base_rate
-    repayment = record.app.product.repayment
-    return Offer(
+) -> OfferRecord:
+    product = record.product
+    base = product.base_rate
+    offer = OfferRecord(
         id=uid(),
+        application_id=record.id,
+        version=len(record.offers) + 1,
+        decision_id=decision.id,
         amount=amount,
         term=term,
         rate=rate,
-        monthly_payment=credit_summary(repayment, amount, term, rate).monthly_payment,
+        monthly_payment=credit_summary(product.repayment, amount, term, rate).monthly_payment,
         is_counter=is_counter,
         status="PENDING",
-        valid_until=iso(at + valid_days * DAY),
         requested=OfferRequested(
-            amount=record.app.amount,
-            term=record.app.term,
+            amount=record.amount,
+            term=record.term,
             rate=base,
-            monthly_payment=credit_summary(repayment, record.app.amount, record.app.term, base).monthly_payment,
+            monthly_payment=credit_summary(product.repayment, record.amount, record.term, base).monthly_payment,
         ),
+        valid_until=at + db.policy.offer_valid_days * DAY,
+        created_at=at,
+    )
+    record.offers.append(offer)
+    return offer
+
+
+def assign(record: ApplicationRecord, user: UserRecord | None) -> None:
+    record.assignee = user
+    record.assignee_id = user.id if user else None
+
+
+def auto_assign(db: Db, record: ApplicationRecord, at: int) -> None:
+    candidates = [user for user in db.users() if user.role == "UNDERWRITER" and user.active]
+    if not candidates:
+        return
+    chosen = min(candidates, key=lambda user: (db.active_reviews(user.id), user.full_name))
+    assign(record, chosen)
+    record_audit(
+        db,
+        None,
+        "application.assign",
+        "application",
+        record.id,
+        f"Заявка {record.number} автоматически распределена: {chosen.full_name}",
+        at,
     )
 
 
-def apply_decision(
-    db: Db,
-    record: StoredApplication,
-    decision: DecisionInput,
-    actor_type: ActorType,
-    actor_name: str,
-    at: int,
-) -> None:
-    app = record.app
-    app.decision = Decision(type=decision.type, made_by=actor_name, reasons=decision.reasons, created_at=iso(at))
-    reason_text = decision.comment.strip() or (decision.reasons[0] if decision.reasons else None)
+def apply_verdict(db: Db, record: ApplicationRecord, verdict: Verdict, actor: Actor, at: int) -> DecisionRecord:
+    revision = record.current_revision
+    assessment = record.assessment
+    decision = DecisionRecord(
+        id=uid(),
+        application_id=record.id,
+        revision_id=revision.id if revision else None,
+        assessment_id=assessment.id if assessment and revision and assessment.revision_id == revision.id else None,
+        outcome=verdict.type,
+        reasons=list(verdict.reasons),
+        reason_codes=list(verdict.codes),
+        comment=verdict.comment,
+        actor_type=actor.type,
+        actor_id=actor.id,
+        actor_name=actor.name,
+        policy_version=db.policy_record.version,
+        created_at=at,
+    )
+    record.decisions.append(decision)
+    reason_text = verdict.comment.strip() or (verdict.reasons[0] if verdict.reasons else None)
 
-    if decision.type in ("APPROVED", "COUNTER_OFFER"):
-        amount = decision.amount if decision.amount is not None else app.amount
-        term = decision.term if decision.term is not None else app.term
-        rate = decision.rate if decision.rate is not None else app.product.base_rate
-        approved = decision.type == "APPROVED"
-        is_counter = (amount != app.amount or term != app.term) if approved else True
-        app.offer = create_offer(record, amount, term, rate, is_counter, at, db.policy.offer_valid_days)
+    if verdict.type in ("APPROVED", "COUNTER_OFFER"):
+        amount = verdict.amount if verdict.amount is not None else record.amount
+        term = verdict.term if verdict.term is not None else record.term
+        rate = verdict.rate if verdict.rate is not None else record.product.base_rate
+        approved = verdict.type == "APPROVED"
+        is_counter = (amount != record.amount or term != record.term) if approved else True
+        offer = create_offer(db, record, decision, amount, term, rate, is_counter, at)
         conditions = f"{money(amount)} на {term} мес. под {rate_text(rate)} годовых."
         if approved:
-            app.contract = ContractRef(number=contract_number(record), signed_at=None)
-            set_status(db, record, "APPROVED", at, actor_type, actor_name, reason_text or "Кредит одобрен")
+            set_status(db, record, "APPROVED", at, actor, reason_text or "Кредит одобрен")
             notify(
                 db,
                 record,
                 "DECISION_MADE",
                 "Кредит одобрен",
-                f"{conditions} Проверьте условия и перейдите к подписанию договора.",
+                f"{conditions} Примите условия до {date_ru(offer.valid_until)} и подпишите договор.",
                 at,
             )
         else:
-            set_status(
-                db, record, "COUNTER_OFFER", at, actor_type, actor_name, reason_text or "Предложены другие условия"
-            )
+            set_status(db, record, "COUNTER_OFFER", at, actor, reason_text or "Предложены другие условия")
             notify(
                 db,
                 record,
                 "OFFER_PENDING",
                 "Банк предлагает другие условия",
-                f"{conditions} Предложение действует до {date_ru(app.offer.valid_until)}.",
+                f"{conditions} Предложение действует до {date_ru(offer.valid_until)}.",
                 at,
             )
-        return
+        return decision
 
-    if decision.type == "NEED_INFO":
-        app.info_request = InfoRequest(id=uid(), items=decision.items, comment=decision.comment, status="OPEN")
-        set_status(
-            db, record, "NEED_INFO", at, actor_type, actor_name, reason_text or "Запрошена дополнительная информация"
+    if verdict.type == "NEED_INFO":
+        record.info_requests.append(
+            InfoRequestRecord(
+                id=uid(),
+                application_id=record.id,
+                decision_id=decision.id,
+                items=[item.model_copy() for item in verdict.items],
+                comment=verdict.comment,
+                status="OPEN",
+                answers=[],
+                created_at=at,
+            )
         )
+        set_status(db, record, "NEED_INFO", at, actor, reason_text or "Запрошена дополнительная информация")
         notify(
             db,
             record,
             "INFO_REQUESTED",
             "Нужна дополнительная информация",
-            f"Банк просит: {'; '.join(item.label.lower() for item in decision.items)}.",
+            f"Банк просит: {'; '.join(item.label.lower() for item in verdict.items)}.",
             at,
         )
-        return
+        return decision
 
-    if decision.type == "MANUAL_REVIEW":
-        set_status(
-            db,
-            record,
-            "MANUAL_REVIEW",
-            at,
-            actor_type,
-            actor_name,
-            reason_text or "Передана на рассмотрение специалисту",
-        )
+    if verdict.type == "MANUAL_REVIEW":
+        set_status(db, record, "MANUAL_REVIEW", at, actor, reason_text or "Передана на рассмотрение специалисту")
         if db.policy.auto_assign and not record.assignee_id:
             auto_assign(db, record, at)
         notify(
@@ -256,9 +553,9 @@ def apply_decision(
             "Кредитный специалист изучит заявку. Обычно это занимает до 1 рабочего дня.",
             at,
         )
-        return
+        return decision
 
-    set_status(db, record, "REJECTED", at, actor_type, actor_name, reason_text or "Отказ")
+    set_status(db, record, "REJECTED", at, actor, reason_text or "Отказ")
     notify(
         db,
         record,
@@ -267,295 +564,253 @@ def apply_decision(
         "К сожалению, банк не может выдать кредит на запрошенных условиях. Причины — в карточке заявки.",
         at,
     )
+    return decision
 
 
-def compute_assessment(db: Db, record: StoredApplication, at: int) -> None:
+def build_case(db: Db, record: ApplicationRecord, at: int) -> Case:
+    revision = require_revision(record)
+    checks = revision_checks(record, revision)
     mc = db.find_company(record.company_id)
-    if not mc:
-        return
-    financials = record.app.financials or derived_financials(db, mc, at)
-    scoring = compute_scoring(mc, record.app, financials, company_loans(db, mc, at), at, db.policy)
-    record.scoring = scoring
-    record.recommendation = compute_recommendation(scoring, record.app, db.policy)
-    record.enriched = True
-
-
-def _system_decision(db: Db, record: StoredApplication, decision: DecisionInput, at: int) -> None:
-    apply_decision(db, record, decision, "SYSTEM", SYSTEM_ACTOR, at)
-
-
-def apply_outcome(db: Db, record: StoredApplication, at: int) -> None:
-    mc = db.find_company(record.company_id)
-    app = record.app
-    product = app.product
-    base = product.base_rate
-    key = mc.key if mc else "background"
-    threshold = db.review_threshold(product.code)
-
-    if key == "client1":
-        if app.amount <= threshold:
-            _system_decision(db, record, DecisionInput("APPROVED", client_approval_reasons(record.scoring), rate=base), at)
-        else:
-            _system_decision(
-                db,
-                record,
-                DecisionInput("MANUAL_REVIEW", [f"Сумма выше порога автоматического решения {money(threshold)}"]),
-                at,
-            )
-        return
-
-    if key == "client2":
-        if app.amount > 1_000_000:
-            _system_decision(
-                db,
-                record,
-                DecisionInput(
-                    "COUNTER_OFFER",
-                    [
-                        "Бизнесу меньше года — лимит ограничен суммой 1 000 000 ₽",
-                        "Короткая история оборотов по счёту",
-                    ],
-                    amount=max(product.min_amount, 1_000_000),
-                    term=int(clamp(app.term, product.min_term, product.max_term)),
-                    rate=base + 1,
-                ),
-                at,
-            )
-        else:
-            _system_decision(
-                db,
-                record,
-                DecisionInput("APPROVED", ["Короткая история бизнеса — ставка выше базовой на 2 п.п."], rate=base + 2),
-                at,
-            )
-        return
-
-    if key == "client3":
-        _system_decision(
-            db,
-            record,
-            DecisionInput(
-                "MANUAL_REVIEW",
-                ["В кредитной истории есть просрочка 45 дней", "Нужна экспертная оценка специалиста"],
-            ),
-            at,
-        )
-        return
-
-    if key == "client4":
-        _system_decision(
-            db,
-            record,
-            DecisionInput("REJECTED", ["Просрочка по кредитам свыше 180 дней", "Налоговая задолженность 312 000 ₽"]),
-            at,
-        )
-        return
-
-    if key == "client5":
-        if record.info_round == 0:
-            _system_decision(
-                db,
-                record,
-                DecisionInput(
-                    "NEED_INFO",
-                    ["Выручка в заявке расходится с данными ФНС"],
-                    items=[item.model_copy() for item in CLIENT5_INFO_ITEMS],
-                    comment="Выручка в заявке заметно выше, чем в налоговой декларации. Уточните цифру и приложите выписку.",
-                ),
-                at,
-            )
-        else:
-            _system_decision(
-                db,
-                record,
-                DecisionInput(
-                    "APPROVED",
-                    ["Расхождение с данными ФНС пояснено", "Выписка подтверждает обороты"],
-                    rate=base + 0.5,
-                ),
-                at,
-            )
-        return
-
-    policy_outcome(db, record, threshold, at)
-
-
-def policy_outcome(db: Db, record: StoredApplication, threshold: int, at: int) -> None:
-    app = record.app
+    if mc is None:
+        raise LookupError(f"Компания заявки {record.number} не найдена")
+    account = checks["ACCOUNT"].result or {}
+    sources = Sources(
+        company=revision.company,
+        egrul=EgrulData.model_validate(checks["EGRUL"].result),
+        fns=FnsData.model_validate(checks["FNS"].result),
+        bki=BkiData.model_validate(checks["BKI"].result),
+        turnover=[TurnoverMonth.model_validate(item) for item in account.get("turnover", [])],
+    )
+    loans = [ActiveLoan.model_validate(item) for item in account.get("loans", [])]
+    financials = revision.financials or derived_financials(db, mc, at)
     policy = db.policy
-    scoring = record.scoring
-    if scoring and scoring.stop_factors:
-        if policy.stop_factors_decision == "REJECTED":
-            _system_decision(db, record, DecisionInput("REJECTED", scoring.stop_factors), at)
-        else:
-            _system_decision(
-                db, record, DecisionInput("MANUAL_REVIEW", ["Есть стоп-факторы — нужна оценка специалиста"]), at
+    assessment = record.assessment
+    scoring = (
+        assessment.scoring()
+        if assessment and assessment.revision_id == revision.id
+        else compute_scoring(sources, revision.product, revision.amount, revision.term, financials, loans, at, policy)
+    )
+    answered = [request for request in record.info_requests if request.status == "ANSWERED"]
+    return Case(
+        sources=sources,
+        product=revision.product,
+        amount=revision.amount,
+        term=revision.term,
+        financials=financials,
+        loans=loans,
+        scoring=scoring,
+        policy=policy,
+        threshold=db.review_threshold(revision.product.code),
+        now=at,
+        revenue_clarified=any(item.code == "revenue_12m" for request in answered for item in request.items),
+        statement_provided=any(item.type == "document" for request in answered for item in request.items)
+        or any(document.kind == "BANK_STATEMENT" for document in record.documents),
+    )
+
+
+def validate(db: Db, record: ApplicationRecord, at: int) -> None:
+    revision = require_revision(record)
+    outcome = CheckOutcome(
+        "COMPLETENESS",
+        "OK",
+        f"Анкета заполнена: {money(revision.amount)} на {revision.term} мес., финансы и согласия на месте",
+    )
+    record_check(record, revision, outcome, 1, at)
+    set_status(db, record, "ENRICHING", at, SYSTEM, STAGE_REASONS["ENRICHING"])
+
+
+def enrich(db: Db, record: ApplicationRecord, at: int) -> None:
+    revision = require_revision(record)
+    mc = db.find_company(record.company_id)
+    if mc is None:
+        raise LookupError(f"Компания заявки {record.number} не найдена")
+    failures = bki_attempts(record, revision)
+    attempt = failures + 1
+    if failures == 0:
+        record_check(record, revision, egrul_check(gateway.egrul(mc), revision.company.head_name), 1, at)
+        record_check(record, revision, fns_check(gateway.fns(mc)), 1, at)
+        turnover, loans = gateway.account(db, mc, at)
+        record_check(record, revision, account_check(turnover, loans), 1, at)
+    try:
+        report = gateway.bki(db, mc, at, attempt, record.mock_fail)
+    except IntegrationError as error:
+        record_check(record, revision, bki_failure(attempt, BKI_ATTEMPTS, str(error)), attempt, at)
+        logger.warning(
+            "БКИ не ответило по заявке %s",
+            record.number,
+            extra={"application_id": record.id, "attempt": attempt, "step": "ENRICHING"},
+        )
+        if attempt < BKI_ATTEMPTS:
+            add_event(
+                db,
+                record,
+                "ENRICHING",
+                "ENRICHING",
+                SYSTEM,
+                f"Бюро кредитных историй не ответило — повторный запрос в БКИ (попытка {attempt + 1} из {BKI_ATTEMPTS})",
+                at,
             )
+            record.next_run_at = at + BKI_RETRY_MS
+            return
+        apply_verdict(db, record, unavailable(), SYSTEM, at)
         return
-    grade = scoring.grade if scoring else "C"
-    rule = policy.grades[grade]
-    rate = app.product.base_rate + rule.rate_markup
-    if rule.auto_decision == "REJECTED":
-        _system_decision(db, record, DecisionInput("REJECTED", [LOW_SCORE_REASON]), at)
-    elif app.amount > threshold:
-        _system_decision(
-            db,
-            record,
-            DecisionInput("MANUAL_REVIEW", [f"Сумма выше порога автоматического решения {money(threshold)}"]),
-            at,
+    record_check(record, revision, bki_check(report), attempt, at)
+    set_status(db, record, "SCORING", at, SYSTEM, STAGE_REASONS["SCORING"])
+
+
+def assess(db: Db, record: ApplicationRecord, at: int) -> None:
+    revision = require_revision(record)
+    case = build_case(db, record, at)
+    scoring = case.scoring
+    record.assessments.append(
+        AssessmentRecord(
+            id=uid(),
+            application_id=record.id,
+            revision_id=revision.id,
+            model_version=MODEL_VERSION,
+            policy_version=db.policy_record.version,
+            score=scoring.score,
+            grade=scoring.grade,
+            factors=scoring.factors,
+            stop_factors=scoring.stop_factors,
+            recommendation=recommend(case),
+            created_at=at,
         )
-    elif rule.auto_decision == "MANUAL_REVIEW":
-        _system_decision(db, record, DecisionInput("MANUAL_REVIEW", ["Нужна экспертная оценка специалиста"]), at)
-    elif rule.auto_decision == "COUNTER_OFFER":
-        _system_decision(
-            db,
-            record,
-            DecisionInput(
-                "COUNTER_OFFER",
-                ["Условия скорректированы по кредитной политике банка"],
-                amount=counter_amount(app, policy),
-                term=app.term,
-                rate=rate,
-            ),
-            at,
-        )
-    else:
-        reasons = client_approval_reasons(scoring)
-        if rule.rate_markup > 0:
-            reasons.append(RISK_MARKUP_REASON)
-        _system_decision(db, record, DecisionInput("APPROVED", reasons, rate=rate), at)
+    )
+    set_status(db, record, "DECIDING", at, SYSTEM, STAGE_REASONS["DECIDING"])
 
 
-def active_reviews(db: Db, user_id: str) -> int:
-    return sum(1 for item in db.applications if item.assignee_id == user_id and item.app.status == "MANUAL_REVIEW")
+def decide_automatically(db: Db, record: ApplicationRecord, at: int) -> DecisionRecord:
+    return apply_verdict(db, record, decide(build_case(db, record, at)), SYSTEM, at)
 
 
-def assign(record: StoredApplication, user: StoredUser | None) -> None:
-    record.assignee_id = user.id if user else None
-    record.assigned_to = user.full_name if user else None
-
-
-def auto_assign(db: Db, record: StoredApplication, at: int) -> None:
-    candidates = [user for user in db.users if user.role == "UNDERWRITER" and user.active]
-    if not candidates:
-        return
-    chosen = min(candidates, key=lambda user: (active_reviews(db, user.id), user.full_name))
-    assign(record, chosen)
-    record_audit(
+def expire_offer(db: Db, record: ApplicationRecord, at: int) -> None:
+    offer = record.offer
+    if offer and offer.status == "PENDING":
+        offer.status = "EXPIRED"
+        offer.responded_at = at
+    set_status(db, record, "EXPIRED", at, SYSTEM, "Срок действия предложения истёк")
+    notify(
         db,
-        None,
-        "application.assign",
-        "application",
-        record.app.id,
-        f"Заявка {record.app.number} автоматически распределена: {chosen.full_name}",
+        record,
+        "OFFER_EXPIRED",
+        "Срок предложения истёк",
+        f"Предложение по заявке {record.number} не было принято вовремя. Подайте заявку повторно — условия рассчитаем заново.",
         at,
     )
 
 
-def disburse(db: Db, record: StoredApplication, at: int, actor_type: ActorType, actor_name: str) -> None:
-    record.disbursed_at = iso(at)
-    record.disburse_at = None
-    set_status(db, record, "DISBURSED", at, actor_type, actor_name, "Средства перечислены на расчётный счёт")
-    contract = record.app.contract.number if record.app.contract else ""
+def accept_offer(db: Db, record: ApplicationRecord, offer: OfferRecord, actor: Actor, at: int) -> None:
+    offer.status = "ACCEPTED"
+    offer.responded_at = at
+    offer.responded_by = actor.id
+    record.amount = offer.amount
+    record.term = offer.term
+    if record.contract is None:
+        record.contract = ContractRecord(
+            application_id=record.id, number=contract_number(record), offer_id=offer.id, created_at=at
+        )
+    else:
+        record.contract.offer_id = offer.id
+    set_status(db, record, "OFFER_ACCEPTED", at, actor, "Клиент принял предложение банка")
+
+
+def decline_offer(db: Db, record: ApplicationRecord, offer: OfferRecord, actor: Actor, at: int) -> None:
+    offer.status = "DECLINED"
+    offer.responded_at = at
+    offer.responded_by = actor.id
+    set_status(db, record, "CLIENT_DECLINED", at, actor, "Клиент отклонил предложение банка")
+
+
+def start_signing(db: Db, record: ApplicationRecord, actor: Actor, at: int) -> None:
+    set_status(db, record, "SIGNING", at, actor, "Договор направлен на подписание")
+    notify(
+        db,
+        record,
+        "CONTRACT_READY",
+        "Договор готов к подписанию",
+        "Подпишите договор в кабинете: подписание смоделировано, реальная электронная подпись не используется.",
+        at,
+    )
+
+
+def complete_signing(
+    db: Db,
+    record: ApplicationRecord,
+    actor: Actor,
+    at: int,
+    method: SignatureType,
+    certificate: Certificate | None,
+    reason: str,
+) -> None:
+    contract = record.contract
+    if contract is None:
+        raise LookupError(f"Договор заявки {record.number} не сформирован")
+    contract.signed_at = at
+    contract.signed_with = method
+    contract.signed_by = actor.id
+    contract.certificate = certificate
+    set_status(db, record, "SIGNED", at, actor, reason)
+
+
+def disburse(db: Db, record: ApplicationRecord, at: int, actor: Actor) -> DisbursementRecord:
+    if record.disbursement is not None:
+        return record.disbursement
+    offer = record.offer
+    contract = record.contract
+    operation = f"PAY-{local(at):%Y%m%d}-{db.next_operation():06d}"
+    disbursement = DisbursementRecord(
+        id=uid(),
+        application_id=record.id,
+        offer_id=offer.id if offer else None,
+        operation_number=operation,
+        contract_number=contract.number if contract else contract_number(record),
+        amount=offer.amount if offer else record.amount,
+        account_number=settlement_account(record.company),
+        status="COMPLETED",
+        simulated=True,
+        actor_type=actor.type,
+        actor_name=actor.name,
+        created_at=at,
+    )
+    record.disbursement = disbursement
+    set_status(db, record, "DISBURSED", at, actor, "Средства перечислены на расчётный счёт")
     notify(
         db,
         record,
         "DISBURSED",
         "Средства зачислены на расчётный счёт",
-        f"{money(record.app.amount)} по договору {contract}. График платежей — в карточке заявки.",
+        f"{money(disbursement.amount)} по договору {disbursement.contract_number}, операция {operation}. "
+        "Выдача смоделирована — реальный платёж не проводится. График платежей — в карточке заявки.",
         at,
     )
+    return disbursement
 
 
-def advance_record(db: Db, record: StoredApplication, now: int) -> None:
-    for _ in range(12):
-        status = record.app.status
-        entered = record.stage_entered_at
-        upcoming = NEXT_STAGE.get(status)
-
-        if upcoming or status == "DECIDING":
-            failing = status == "ENRICHING" and record.mock_fail
-            if failing and not record.mock_fail_event_done and now >= entered + STAGE_MS:
-                add_event(
-                    db,
-                    record,
-                    "ENRICHING",
-                    "ENRICHING",
-                    "SYSTEM",
-                    SYSTEM_ACTOR,
-                    "Бюро кредитных историй не ответило — повторный запрос в БКИ",
-                    entered + STAGE_MS,
-                )
-                record.mock_fail_event_done = True
-            duration = MOCK_FAIL_ENRICH_MS if failing else STAGE_MS
-            if now - entered < duration:
-                return
-            at = entered + duration
-            if status == "DECIDING":
-                apply_outcome(db, record, at)
-                continue
-            if upcoming == "SCORING" or (upcoming == "DECIDING" and not record.enriched):
-                compute_assessment(db, record, at)
-            reason, title, body = STAGE_COPY[upcoming]
-            set_status(db, record, upcoming, at, "SYSTEM", SYSTEM_ACTOR, reason)
-            if upcoming == CLIENT_NOTIFIED_STAGE:
-                notify(db, record, "STAGE_PASSED", title, body, at)
-            continue
-
-        if status == "SIGNED" and record.disburse_at is not None and now >= record.disburse_at:
-            disburse(db, record, record.disburse_at, "SYSTEM", SYSTEM_ACTOR)
-            continue
-        return
+def step(db: Db, record: ApplicationRecord, at: int) -> None:
+    status = record.status
+    if status == "SUBMITTED":
+        set_status(db, record, "VALIDATING", at, SYSTEM, STAGE_REASONS["VALIDATING"])
+        notify(db, record, "STAGE_PASSED", *REVIEW_STARTED, at)
+    elif status == "VALIDATING":
+        validate(db, record, at)
+    elif status == "ENRICHING":
+        enrich(db, record, at)
+    elif status == "SCORING":
+        assess(db, record, at)
+    elif status == "DECIDING":
+        decide_automatically(db, record, at)
+    elif status in OFFER_STATUSES:
+        expire_offer(db, record, at)
+    elif status == "SIGNED":
+        disburse(db, record, at, SYSTEM)
+    else:
+        record.next_run_at = None
 
 
-def advance_all(db: Db, now: int) -> None:
-    for record in db.applications:
-        advance_record(db, record, now)
-
-
-def submit_missing(db: Db, record: StoredApplication) -> list[str]:
-    app = record.app
-    product = app.product
-    missing: list[str] = []
-    catalog = db.find_product(product.code)
-    if not catalog or not catalog.active:
-        missing.append("product")
-    elif not okved_eligible(catalog, app.company.okved_main):
-        missing.append("product_eligibility")
-    if not (product.min_amount <= app.amount <= product.max_amount):
-        missing.append("amount")
-    if not (product.min_term <= app.term <= product.max_term):
-        missing.append("term")
-    if not app.company_confirmed:
-        missing.append("company_confirmed")
-    if not app.financials:
-        missing.append("financials")
-    if product.requires_invoice and not any(doc.kind == "EQUIPMENT_INVOICE" for doc in app.documents):
-        missing.append("equipment_invoice")
-    if not app.consents.bki:
-        missing.append("consent_bki")
-    if not app.consents.personal_data:
-        missing.append("consent_personal_data")
-    if not app.consents.risks:
-        missing.append("consent_risks")
-    return missing
-
-
-def submit_application(db: Db, record: StoredApplication, actor_name: str, now: int, mock_fail: bool) -> None:
-    record.mock_fail = mock_fail
-    record.mock_fail_event_done = False
-    record.enriched = False
-    record.app.submitted_at = iso(now)
-    set_status(db, record, "SUBMITTED", now, "CLIENT", actor_name, "Заявка отправлена клиентом")
-    notify(
-        db,
-        record,
-        "APPLICATION_SUBMITTED",
-        "Заявка отправлена",
-        f"Заявка {record.app.number} принята банком. Статус обновляется автоматически.",
-        now,
-    )
-
-
-def schedule_disbursement(db: Db, record: StoredApplication, now: int) -> None:
-    record.disburse_at = now + DISBURSE_DELAY_MS if db.policy.auto_disbursement else None
+def advance(db: Db, record: ApplicationRecord, now: int) -> None:
+    for _ in range(MAX_STEPS):
+        due = record.next_run_at
+        if due is None or due > now:
+            return
+        step(db, record, due)

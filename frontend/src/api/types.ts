@@ -122,6 +122,7 @@ export type ApplicationStatus =
   | 'DECIDING'
   | 'APPROVED'
   | 'COUNTER_OFFER'
+  | 'OFFER_ACCEPTED'
   | 'NEED_INFO'
   | 'MANUAL_REVIEW'
   | 'REJECTED'
@@ -130,6 +131,7 @@ export type ApplicationStatus =
   | 'DISBURSED'
   | 'CLIENT_DECLINED'
   | 'CANCELLED'
+  | 'EXPIRED'
 
 export interface ApplicationShort {
   id: string
@@ -195,7 +197,7 @@ export interface InfoRequest {
   id: string
   items: InfoRequestItem[]
   comment: string
-  status: 'OPEN' | 'ANSWERED'
+  status: 'OPEN' | 'ANSWERED' | 'CANCELLED'
 }
 
 export type DecisionType = 'APPROVED' | 'COUNTER_OFFER' | 'NEED_INFO' | 'MANUAL_REVIEW' | 'REJECTED'
@@ -204,7 +206,43 @@ export interface Decision {
   type: DecisionType
   made_by: string
   reasons: string[]
+  reason_codes: string[]
   created_at: string
+}
+
+export type SignatureType = 'PEP' | 'KEP'
+
+export interface Certificate {
+  id: string
+  serial: string
+  owner_name: string
+  owner_title: string
+  organization: string
+  inn: string
+  ogrn: string
+  issuer: string
+  valid_from: string
+  valid_to: string
+}
+
+export interface SigningCertificate extends Certificate {
+  problem: string | null
+}
+
+export interface ContractRef {
+  number: string
+  signed_at: string | null
+  signed_with: SignatureType | null
+  certificate: Certificate | null
+}
+
+export interface Disbursement {
+  operation_number: string
+  amount: number
+  account_number: string
+  contract_number: string
+  disbursed_at: string
+  simulated: boolean
 }
 
 export interface Application {
@@ -224,7 +262,11 @@ export interface Application {
   offer: Offer | null
   info_request: InfoRequest | null
   decision: Decision | null
-  contract: { number: string; signed_at: string | null } | null
+  contract: ContractRef | null
+  disbursement: Disbursement | null
+  previous_application_id: string | null
+  version: number
+  revision: number
   created_at: string
   submitted_at: string | null
   updated_at: string
@@ -282,6 +324,7 @@ export type NotificationType =
   | 'DECISION_MADE'
   | 'OFFER_PENDING'
   | 'OFFER_EXPIRING'
+  | 'OFFER_EXPIRED'
   | 'CONTRACT_READY'
   | 'DISBURSED'
   | 'PERSONAL_OFFER'
@@ -429,6 +472,29 @@ export interface Discrepancy {
   diff_percent: number
 }
 
+export type CheckType = 'COMPLETENESS' | 'EGRUL' | 'FNS' | 'BKI' | 'ACCOUNT'
+export type CheckStatus = 'OK' | 'ISSUES' | 'ERROR'
+
+export interface CheckResult {
+  type: CheckType
+  source: string
+  status: CheckStatus
+  summary: string
+  attempt: number
+  checked_at: string
+}
+
+export interface RevisionSummary {
+  sequence: number
+  reason: 'SUBMITTED' | 'INFO_PROVIDED'
+  author_name: string
+  amount: number
+  term: number
+  financials: Financials | null
+  answers: InfoAnswer[]
+  created_at: string
+}
+
 export interface BankApplication extends Application {
   enrichment: { egrul: EgrulData; fns: FnsData; bki: BkiData } | null
   scoring: Scoring | null
@@ -436,6 +502,9 @@ export interface BankApplication extends Application {
   discrepancies: Discrepancy[]
   assigned_to: string | null
   assignee_id: string | null
+  checks: CheckResult[]
+  revisions: RevisionSummary[]
+  info_requests: InfoRequest[]
 }
 
 export type BankDecisionType = 'APPROVED' | 'COUNTER_OFFER' | 'NEED_INFO' | 'REJECTED'
@@ -462,6 +531,8 @@ export interface ApiErrorBody {
   detail: string
   code: string
   missing?: string[]
+  field_errors?: { field: string; message: string }[]
+  correlation_id?: string
 }
 
 export interface ApplicationNote {
@@ -490,9 +561,14 @@ export interface CreditPolicyInput {
   manual_review_sla_hours: number
   auto_assign: boolean
   auto_disbursement: boolean
+  max_debt_load: number
+  revenue_mismatch_percent: number
+  manual_review_overdue_days: number
+  min_business_age_months: number
 }
 
 export interface CreditPolicy extends CreditPolicyInput {
+  version: number
   updated_at: string | null
   updated_by: string | null
 }

@@ -4,22 +4,39 @@ from dataclasses import dataclass
 from functools import cache
 
 from app.audit import decision_summary, record_audit
+from app.decision import Verdict
 from app.fmt import DAY, HOUR, MINUTE, add_months, iso, local, month_key, parse_ms, shift_month
 from app.insights import derived_financials
-from app.models import ClientKey, Db, StoredApplication, StoredCompany, StoredEvent, StoredNotification, StoredUser, uid
+from app.models import (
+    ApplicationRecord,
+    CompanyRecord,
+    DocumentRecord,
+    ExternalLoanRecord,
+    NotificationRecord,
+    ProductRecord,
+    SourceRecord,
+    TurnoverRecord,
+    UserRecord,
+    default_policy,
+    uid,
+)
 from app.pipeline import (
-    SYSTEM_ACTOR,
-    DecisionInput,
-    apply_decision,
+    SYSTEM,
+    Actor,
+    accept_offer,
+    actor_of,
+    advance,
+    apply_verdict,
     assign,
-    compute_assessment,
-    set_status,
+    complete_signing,
+    create_draft,
+    disburse,
+    start_signing,
     submit_application,
 )
+from app.repo import Db
 from app.schemas import (
     ActiveLoan,
-    AppDocument,
-    Application,
     BkiData,
     BkiLoan,
     Company,
@@ -37,20 +54,44 @@ from app.schemas import (
     TurnoverMonth,
 )
 from app.security import hash_password
+from app.signature import certificate_at
 
-DB_VERSION = 8
 DEMO_PASSWORD = "demo"
 UNDERWRITER_NAME = "Ковалёва Ирина Михайловна"
 
 DEMO_ACCOUNTS = [
-    DemoAccount(email="client1@demo.local", title="ООО «Пекарня Ветер»", description="Сильный профиль: до 5 млн — одобрение"),
-    DemoAccount(email="client2@demo.local", title="ИП Смирнов А.В.", description="Молодой бизнес: больше 1 млн — встречное предложение"),
-    DemoAccount(email="client3@demo.local", title="ООО «СтройМастер»", description="Просрочка в истории: ручное рассмотрение"),
-    DemoAccount(email="client4@demo.local", title="ООО «Радуга Трейд»", description="Стоп-факторы: отказ с причинами"),
-    DemoAccount(email="client5@demo.local", title="ООО «ТехноСервис»", description="Расхождение с ФНС: запрос информации"),
+    DemoAccount(
+        email="client1@demo.local",
+        title="ООО «Пекарня Ветер»",
+        description="Сильный профиль: до 5 млн — автоодобрение, больше — специалист",
+    ),
+    DemoAccount(
+        email="client2@demo.local",
+        title="ИП Смирнов А.В.",
+        description="Молодой бизнес: крупная сумма не проходит по нагрузке — встречное предложение",
+    ),
+    DemoAccount(
+        email="client3@demo.local",
+        title="ООО «СтройМастер»",
+        description="Просрочка 45 дней в БКИ: ручное рассмотрение",
+    ),
+    DemoAccount(
+        email="client4@demo.local",
+        title="ООО «Радуга Трейд»",
+        description="Налоговый долг и просрочка: отказ по стоп-факторам",
+    ),
+    DemoAccount(
+        email="client5@demo.local", title="ООО «ТехноСервис»", description="Выручка расходится с ФНС: запрос информации"
+    ),
     DemoAccount(email="client6@demo.local", title="Петров П.С.", description="Компания не добавлена: онбординг по ИНН"),
-    DemoAccount(email="underwriter@bank.local", title="Андеррайтер", description="Очередь ручного рассмотрения и решения"),
-    DemoAccount(email="admin@bank.local", title="Руководитель кредитного управления", description="Очередь, статистика и API администрирования"),
+    DemoAccount(
+        email="underwriter@bank.local", title="Андеррайтер", description="Очередь ручного рассмотрения и решения"
+    ),
+    DemoAccount(
+        email="admin@bank.local",
+        title="Руководитель кредитного управления",
+        description="Очередь, статистика и API администрирования",
+    ),
 ]
 
 PRIORITY_OKVED = [f"{code:02d}" for code in range(10, 34)] + ["01", "02", "03", "55", "62", "63", "79"]
@@ -280,17 +321,16 @@ class FnsInput:
 
 
 def make_company(
-    key: ClientKey,
     company: Company,
     fns: FnsInput,
     bki: BkiData,
     turnover: list[TurnoverMonth],
     external_loans: list[ActiveLoan] | None = None,
-) -> StoredCompany:
+) -> CompanyRecord:
     revenue = sum(month.inflow for month in turnover)
-    return StoredCompany(
-        key=key,
-        company=company,
+    record = CompanyRecord(**company.model_dump(), created_at=0)
+    record.source = SourceRecord(
+        company_id=company.id,
         egrul=EgrulData(
             status="Действующее",
             ogrn=company.ogrn,
@@ -308,9 +348,29 @@ def make_company(
             declared_revenue_12m=thousands(revenue * fns.revenue_factor),
         ),
         bki=bki,
-        turnover=turnover,
-        external_loans=external_loans or [],
+        updated_at=0,
     )
+    record.turnover_rows = [
+        TurnoverRecord(company_id=company.id, month=month.month, inflow=month.inflow, outflow=month.outflow)
+        for month in turnover
+    ]
+    record.loan_rows = [
+        ExternalLoanRecord(
+            id=loan.id,
+            company_id=company.id,
+            contract_number=loan.contract_number,
+            product_name=loan.product_name,
+            amount=loan.amount,
+            balance=loan.balance,
+            rate=loan.rate,
+            monthly_payment=loan.monthly_payment,
+            next_payment_date=parse_ms(loan.next_payment_date),
+            issued_at=parse_ms(loan.issued_at),
+            maturity_date=parse_ms(loan.maturity_date),
+        )
+        for loan in external_loans or []
+    ]
+    return record
 
 
 def bki_loan(creditor: str, amount: int, balance: int, opened_at: str, closed_at: str | None, overdue: int) -> BkiLoan:
@@ -324,7 +384,7 @@ def bki_loan(creditor: str, amount: int, balance: int, opened_at: str, closed_at
     )
 
 
-def demo_companies(now: int) -> list[StoredCompany]:
+def demo_companies(now: int) -> list[CompanyRecord]:
     def bakery(index: int, month: int) -> tuple[float, float]:
         season = BAKERY_SEASON[month]
         inflow = 3_050_000 * (1 + 0.012 * index) * season * (1 + noise(index, 1) * 0.04)
@@ -348,7 +408,6 @@ def demo_companies(now: int) -> list[StoredCompany]:
 
     return [
         make_company(
-            "client1",
             Company(
                 id="c-client1",
                 inn="7714382915",
@@ -381,7 +440,6 @@ def demo_companies(now: int) -> list[StoredCompany]:
             build_turnover(now, 12, bakery),
         ),
         make_company(
-            "client2",
             Company(
                 id="c-client2",
                 inn="502913648207",
@@ -407,7 +465,6 @@ def demo_companies(now: int) -> list[StoredCompany]:
             build_turnover(now, 8, young),
         ),
         make_company(
-            "client3",
             Company(
                 id="c-client3",
                 inn="5260417832",
@@ -451,7 +508,6 @@ def demo_companies(now: int) -> list[StoredCompany]:
             ],
         ),
         make_company(
-            "client4",
             Company(
                 id="c-client4",
                 inn="7728519364",
@@ -491,7 +547,6 @@ def demo_companies(now: int) -> list[StoredCompany]:
             ],
         ),
         make_company(
-            "client5",
             Company(
                 id="c-client5",
                 inn="7802615473",
@@ -521,7 +576,7 @@ def demo_companies(now: int) -> list[StoredCompany]:
     ]
 
 
-def registry_companies(now: int) -> list[StoredCompany]:
+def registry_companies(now: int) -> list[CompanyRecord]:
     company = Company(
         id="c-registry-petrov",
         inn="771405283916",
@@ -537,7 +592,6 @@ def registry_companies(now: int) -> list[StoredCompany]:
         employees_count=4,
     )
     stored = make_company(
-        "newcomer",
         company,
         FnsInput(),
         BkiData(rating=690, rating_label="Средний", active_loans=[], closed_loans=[], max_overdue_days_24m=0),
@@ -606,7 +660,7 @@ BACKGROUND = [
         6,
         610,
         "Средний",
-        18,
+        35,
         0,
         13,
     ),
@@ -693,14 +747,13 @@ BACKGROUND = [
 ]
 
 
-def background_company(now: int, item: Background) -> StoredCompany:
+def background_company(now: int, item: Background) -> CompanyRecord:
     def flow(index: int, _: int) -> tuple[float, float]:
         inflow = item.base * (1 + 0.006 * index) * (1 + noise(index, item.seed) * 0.12)
         return inflow, inflow * (1 - item.margin) * (1 + noise(index, item.seed + 1) * 0.03)
 
     tax_system: TaxSystem = "PATENT" if item.legal_form == "IP" else "USN_15"
     return make_company(
-        "background",
         Company(
             id=item.id,
             inn=item.inn,
@@ -727,7 +780,7 @@ def background_company(now: int, item: Background) -> StoredCompany:
     )
 
 
-def demo_users() -> list[StoredUser]:
+def demo_users(now: int) -> list[UserRecord]:
     rows = [
         (
             "u-client1",
@@ -769,7 +822,7 @@ def demo_users() -> list[StoredUser]:
     ]
     password_hash = demo_password_hash()
     return [
-        StoredUser(
+        UserRecord(
             id=user_id,
             email=email,
             full_name=full_name,
@@ -777,18 +830,22 @@ def demo_users() -> list[StoredUser]:
             position=position,
             company_id=company_id,
             password_hash=password_hash,
+            active=True,
+            created_at=now - (len(rows) - index),
         )
-        for user_id, email, full_name, role, position, company_id in rows
+        for index, (user_id, email, full_name, role, position, company_id) in enumerate(rows)
     ]
 
 
-def document(kind: DocumentKind, filename: str, size: int, at: int) -> AppDocument:
-    return AppDocument(id=uid(), kind=kind, filename=filename, size=size, created_at=iso(at))
+def document(kind: DocumentKind, filename: str, size: int, at: int) -> DocumentRecord:
+    return DocumentRecord(
+        id=uid(), kind=kind, filename=filename, size=size, media_type="application/pdf", created_at=at
+    )
 
 
 def draft_record(
     db: Db,
-    mc: StoredCompany,
+    mc: CompanyRecord,
     user_id: str | None,
     product_code: str,
     amount: int,
@@ -796,85 +853,50 @@ def draft_record(
     purpose: str,
     purpose_type: PurposeType,
     created_at: int,
-) -> StoredApplication:
-    product = next((item for item in db.products if item.code == product_code), db.products[1])
-    record = StoredApplication(
-        app=Application(
-            id=uid(),
-            number=db.next_number(),
-            status="DRAFT",
-            product=product.model_copy(deep=True),
-            amount=amount,
-            term=term,
-            purpose=purpose,
-            purpose_type=purpose_type,
-            company=mc.company.model_copy(deep=True),
-            company_confirmed=False,
-            financials=None,
-            documents=[],
-            consents=Consents(),
-            offer=None,
-            info_request=None,
-            decision=None,
-            contract=None,
-            created_at=iso(created_at),
-            submitted_at=None,
-            updated_at=iso(created_at),
-        ),
-        company_id=mc.company.id,
-        user_id=user_id,
-        stage_entered_at=created_at,
-    )
-    db.applications.append(record)
-    user = db.find_user(user_id)
-    db.events.append(
-        StoredEvent(
-            id=uid(),
-            application_id=record.app.id,
-            from_status=None,
-            to_status="DRAFT",
-            actor_type="CLIENT",
-            actor_name=user.full_name if user else mc.company.head_name,
-            reason="Создан черновик заявки",
-            created_at=iso(created_at),
-        )
-    )
-    return record
+) -> ApplicationRecord:
+    product = db.find_product(product_code)
+    if product is None:
+        raise LookupError(product_code)
+    return create_draft(db, mc, product, amount, term, purpose, purpose_type, db.find_user(user_id), created_at)
 
 
-def prepare_for_submit(db: Db, record: StoredApplication, at: int, documents: list[AppDocument]) -> None:
+def prepare_for_submit(db: Db, record: ApplicationRecord, at: int, documents: list[DocumentRecord]) -> None:
     mc = db.find_company(record.company_id)
-    if not mc:
-        return
-    record.app.company_confirmed = True
-    record.app.financials = derived_financials(db, mc, at)
-    record.app.documents = documents
-    record.app.consents = Consents(bki=True, personal_data=True, risks=True)
+    if mc is None:
+        raise LookupError(record.company_id)
+    record.company_confirmed = True
+    record.financials = derived_financials(db, mc, at)
+    record.documents.extend(documents)
+    record.consents = Consents(bki=True, personal_data=True, risks=True)
 
 
-def run_pipeline(db: Db, record: StoredApplication, start: int, step: int, actor_name: str) -> int:
-    submit_application(db, record, actor_name, start, False)
-    set_status(db, record, "VALIDATING", start + step, "SYSTEM", SYSTEM_ACTOR, "Заявка принята в обработку")
-    set_status(
-        db, record, "ENRICHING", start + step * 2, "SYSTEM", SYSTEM_ACTOR, "Проверка полноты и корректности пройдена"
-    )
-    compute_assessment(db, record, start + step * 3)
-    set_status(db, record, "SCORING", start + step * 3, "SYSTEM", SYSTEM_ACTOR, "Получены данные ЕГРЮЛ, ФНС и БКИ")
-    set_status(db, record, "DECIDING", start + step * 4, "SYSTEM", SYSTEM_ACTOR, "Скоринговая оценка рассчитана")
-    return start + step * 5
+def applicant(db: Db, record: ApplicationRecord) -> Actor:
+    user = db.find_user(record.user_id)
+    return actor_of(user) if user else Actor("CLIENT", record.company.head_name)
 
 
-def sign_and_disburse(db: Db, record: StoredApplication, sign_at: int, actor_name: str) -> None:
-    set_status(db, record, "SIGNING", sign_at, "CLIENT", actor_name, "Запрошен код подтверждения")
+def run_pipeline(db: Db, record: ApplicationRecord, start: int) -> int:
+    submit_application(db, record, applicant(db, record), start, 0)
+    advance(db, record, start + 10 * MINUTE)
+    decision = record.decision
+    if decision is None:
+        raise LookupError(record.number)
+    return decision.created_at
+
+
+def sign_and_disburse(db: Db, record: ApplicationRecord, sign_at: int) -> None:
+    offer = record.offer
+    if offer is None:
+        raise LookupError(record.number)
+    actor = applicant(db, record)
+    accept_offer(db, record, offer, actor, sign_at - 10 * MINUTE)
+    start_signing(db, record, actor, sign_at)
     signed_at = sign_at + 3 * MINUTE
-    set_status(db, record, "SIGNED", signed_at, "CLIENT", actor_name, "Договор подписан простой электронной подписью")
-    if record.app.contract:
-        record.app.contract.signed_at = iso(signed_at)
-    if record.app.offer:
-        record.app.offer.status = "ACCEPTED"
-    disbursed_at = sign_at + 2 * HOUR
-    set_status(db, record, "DISBURSED", disbursed_at, "SYSTEM", SYSTEM_ACTOR, "Средства перечислены на расчётный счёт")
-    record.disbursed_at = iso(disbursed_at)
+    certificate = certificate_at(db.seeded_at, record.company, record.company.head_name, signed_at)
+    complete_signing(
+        db, record, actor, signed_at, "KEP", certificate, "Договор подписан квалифицированной электронной подписью"
+    )
+    disburse(db, record, sign_at + 2 * HOUR, SYSTEM)
 
 
 def seed_notification(
@@ -887,8 +909,8 @@ def seed_notification(
     is_read: bool,
     application_id: str | None,
 ) -> None:
-    db.notifications.append(
-        StoredNotification(
+    db.add(
+        NotificationRecord(
             id=uid(),
             user_id=user_id,
             application_id=application_id,
@@ -896,50 +918,67 @@ def seed_notification(
             title=title,
             body=body,
             is_read=is_read,
-            created_at=iso(at),
+            created_at=at,
+            read_at=at if is_read else None,
         )
     )
 
 
-def seed_assign(db: Db, record: StoredApplication, user_id: str, at: int) -> None:
+def underwriter(db: Db, user_id: str) -> UserRecord:
     user = db.find_user(user_id)
+    if user is None:
+        raise LookupError(user_id)
+    return user
+
+
+def seed_assign(db: Db, record: ApplicationRecord, user_id: str, at: int) -> None:
+    user = underwriter(db, user_id)
     assign(record, user)
-    record_audit(
-        db, user, "application.assign", "application", record.app.id, f"Заявка {record.app.number} взята в работу", at
-    )
+    record_audit(db, user, "application.assign", "application", record.id, f"Заявка {record.number} взята в работу", at)
 
 
-def seed_decision(db: Db, record: StoredApplication, user_id: str, at: int) -> None:
-    record_audit(
-        db, db.find_user(user_id), "application.decision", "application", record.app.id, decision_summary(record), at
-    )
+def seed_decision(db: Db, record: ApplicationRecord, user_id: str, verdict: Verdict, at: int) -> None:
+    user = underwriter(db, user_id)
+    apply_verdict(db, record, verdict, actor_of(user), at)
+    record_audit(db, user, "application.decision", "application", record.id, decision_summary(record), at)
 
 
-def review_threshold_reason() -> list[str]:
-    return ["Сумма выше порога автоматического решения 5 000 000 ₽"]
+def seed_catalog(db: Db, now: int) -> None:
+    for position, product in enumerate(PRODUCTS):
+        record = ProductRecord(code=product.code, position=position, version=1, updated_at=now)
+        record.assign(product.model_copy(deep=True))
+        db.add(record)
+    db.save_policy(default_policy(), None, now)
 
 
-def create_seed(now: int) -> Db:
-    db = Db(
-        version=DB_VERSION,
-        seeded_at=now,
-        counter=1200,
-        users=demo_users(),
-        companies=[
-            *demo_companies(now),
-            *registry_companies(now),
-            *(background_company(now, item) for item in BACKGROUND),
-        ],
-        products=[product.model_copy(deep=True) for product in PRODUCTS],
-    )
+def seed_companies(db: Db, now: int) -> None:
+    for record in [
+        *demo_companies(now),
+        *registry_companies(now),
+        *(background_company(now, item) for item in BACKGROUND),
+    ]:
+        record.created_at = now
+        record.source.updated_at = now
+        db.add(record)
+    db.flush()
+    for user in demo_users(now):
+        db.add(user)
+    db.flush()
 
-    def company(company_id: str) -> StoredCompany:
-        found = db.find_company(company_id)
-        if not found:
-            raise LookupError(company_id)
-        return found
 
-    c1 = company("c-client1")
+def company(db: Db, company_id: str) -> CompanyRecord:
+    found = db.find_company(company_id)
+    if found is None:
+        raise LookupError(company_id)
+    return found
+
+
+def seed_demo(db: Db, now: int) -> None:
+    db.set_seeded_at(now)
+    seed_catalog(db, now)
+    seed_companies(db, now)
+
+    c1 = company(db, "c-client1")
     history = draft_record(
         db,
         c1,
@@ -958,16 +997,8 @@ def create_seed(now: int) -> Db:
         history_start,
         [document("BANK_STATEMENT", "Выписка_по_счёту_12_мес.pdf", 482_133, history_start - 10 * MINUTE)],
     )
-    history_decision = run_pipeline(db, history, history_start, 40_000, "Ветрова Анна Сергеевна")
-    apply_decision(
-        db,
-        history,
-        DecisionInput("APPROVED", ["Обороты по счёту растут или стабильны", "Кредитная история без просрочек"], rate=19.5),
-        "SYSTEM",
-        SYSTEM_ACTOR,
-        history_decision,
-    )
-    sign_and_disburse(db, history, history_decision + 20 * HOUR, "Ветрова Анна Сергеевна")
+    history_decision = run_pipeline(db, history, history_start)
+    sign_and_disburse(db, history, history_decision + 20 * HOUR)
 
     draft = draft_record(
         db,
@@ -980,12 +1011,11 @@ def create_seed(now: int) -> Db:
         "EQUIPMENT",
         now - 2 * DAY,
     )
-    draft.app.company_confirmed = True
+    draft.company_confirmed = True
 
-    c3 = company("c-client3")
     review = draft_record(
         db,
-        c3,
+        company(db, "c-client3"),
         "u-client3",
         "WORKING_CAPITAL",
         4_000_000,
@@ -1004,22 +1034,11 @@ def create_seed(now: int) -> Db:
             document("TAX_RETURN", "Декларация_НДС_2кв.pdf", 214_908, review_start - 4 * MINUTE),
         ],
     )
-    review_decision = run_pipeline(db, review, review_start, 30_000, "Лебедева Ольга Николаевна")
-    apply_decision(
-        db,
-        review,
-        DecisionInput(
-            "MANUAL_REVIEW",
-            ["В кредитной истории есть просрочка 45 дней", "Нужна экспертная оценка специалиста"],
-        ),
-        "SYSTEM",
-        SYSTEM_ACTOR,
-        review_decision,
-    )
+    review_decision = run_pipeline(db, review, review_start)
 
     honey = draft_record(
         db,
-        company("c-bg-honey"),
+        company(db, "c-bg-honey"),
         None,
         "EQUIPMENT",
         7_500_000,
@@ -1038,19 +1057,12 @@ def create_seed(now: int) -> Db:
             document("BANK_STATEMENT", "Выписка_12_мес.pdf", 528_771, honey_start - 19 * MINUTE),
         ],
     )
-    apply_decision(
-        db,
-        honey,
-        DecisionInput("MANUAL_REVIEW", review_threshold_reason()),
-        "SYSTEM",
-        SYSTEM_ACTOR,
-        run_pipeline(db, honey, honey_start, 35_000, "Ершов Павел Константинович"),
-    )
+    run_pipeline(db, honey, honey_start)
     seed_assign(db, honey, "u-underwriter", honey_start + 3 * HOUR)
 
     salon = draft_record(
         db,
-        company("c-bg-salon"),
+        company(db, "c-bg-salon"),
         None,
         "OVERDRAFT",
         900_000,
@@ -1063,19 +1075,12 @@ def create_seed(now: int) -> Db:
     prepare_for_submit(
         db, salon, salon_start, [document("BANK_STATEMENT", "Выписка_ИП.pdf", 190_442, salon_start - 3 * MINUTE)]
     )
-    apply_decision(
-        db,
-        salon,
-        DecisionInput("MANUAL_REVIEW", ["Средний балл скоринга", "Короткие просрочки в кредитной истории"]),
-        "SYSTEM",
-        SYSTEM_ACTOR,
-        run_pipeline(db, salon, salon_start, 20_000, "Гарипова Лилия Рустамовна"),
-    )
+    run_pipeline(db, salon, salon_start)
     seed_assign(db, salon, "u-underwriter2", salon_start + 20 * MINUTE)
 
     logistic = draft_record(
         db,
-        company("c-bg-logistic"),
+        company(db, "c-bg-logistic"),
         None,
         "EQUIPMENT",
         12_000_000,
@@ -1094,30 +1099,26 @@ def create_seed(now: int) -> Db:
             document("BANK_STATEMENT", "Выписка_Логистик.pdf", 912_004, logistic_start - HOUR),
         ],
     )
-    logistic_review = run_pipeline(db, logistic, logistic_start, 30_000, "Зайцев Роман Олегович")
-    apply_decision(
-        db, logistic, DecisionInput("MANUAL_REVIEW", review_threshold_reason()), "SYSTEM", SYSTEM_ACTOR, logistic_review
-    )
-    apply_decision(
+    logistic_review = run_pipeline(db, logistic, logistic_start)
+    seed_assign(db, logistic, "u-underwriter", logistic_review + HOUR)
+    seed_decision(
         db,
         logistic,
-        DecisionInput(
+        "u-underwriter",
+        Verdict(
             "APPROVED",
             ["Сильные финансовые показатели", "Залог — приобретаемая техника"],
+            ["UNDERWRITER_DECISION"],
             rate=17.5,
             comment="Одобрено, ставка снижена с учётом залога",
         ),
-        "UNDERWRITER",
-        UNDERWRITER_NAME,
         logistic_review + 7 * HOUR,
     )
-    seed_assign(db, logistic, "u-underwriter", logistic_review + HOUR)
-    seed_decision(db, logistic, "u-underwriter", logistic_review + 7 * HOUR)
-    sign_and_disburse(db, logistic, logistic_review + 30 * HOUR, "Зайцев Роман Олегович")
+    sign_and_disburse(db, logistic, logistic_review + 30 * HOUR)
 
     green = draft_record(
         db,
-        company("c-bg-green"),
+        company(db, "c-bg-green"),
         None,
         "WORKING_CAPITAL",
         3_000_000,
@@ -1128,13 +1129,11 @@ def create_seed(now: int) -> Db:
     )
     green_start = now - 5 * DAY
     prepare_for_submit(db, green, green_start, [])
-    green_decision = run_pipeline(db, green, green_start, 25_000, "Полякова Марина Игоревна")
-    green_reasons = green.recommendation.reasons if green.recommendation else ["Низкий балл скоринга"]
-    apply_decision(db, green, DecisionInput("REJECTED", green_reasons), "SYSTEM", SYSTEM_ACTOR, green_decision)
+    run_pipeline(db, green, green_start)
 
     media = draft_record(
         db,
-        company("c-bg-media"),
+        company(db, "c-bg-media"),
         None,
         "WORKING_CAPITAL",
         5_800_000,
@@ -1150,32 +1149,28 @@ def create_seed(now: int) -> Db:
         media_start,
         [document("BANK_STATEMENT", "Выписка_Апельсин.pdf", 377_210, media_start - 10 * MINUTE)],
     )
-    media_review = run_pipeline(db, media, media_start, 30_000, "Тихонов Артём Сергеевич")
-    apply_decision(
-        db, media, DecisionInput("MANUAL_REVIEW", review_threshold_reason()), "SYSTEM", SYSTEM_ACTOR, media_review
-    )
-    apply_decision(
+    media_review = run_pipeline(db, media, media_start)
+    seed_assign(db, media, "u-underwriter", media_review + HOUR)
+    seed_decision(
         db,
         media,
-        DecisionInput(
+        "u-underwriter",
+        Verdict(
             "NEED_INFO",
             ["Нужны подтверждающие документы по контракту"],
+            ["UNDERWRITER_DECISION"],
             items=[
                 InfoRequestItem(code="statement_6m", label="Выписка по счёту за 6 месяцев", type="document"),
                 InfoRequestItem(code="tax_return", label="Налоговая декларация за последний период", type="document"),
             ],
             comment="Приложите выписку и декларацию — по контракту крупные авансы.",
         ),
-        "UNDERWRITER",
-        UNDERWRITER_NAME,
         media_review + 5 * HOUR,
     )
-    seed_assign(db, media, "u-underwriter", media_review + HOUR)
-    seed_decision(db, media, "u-underwriter", media_review + 5 * HOUR)
 
     coffee = draft_record(
         db,
-        company("c-bg-coffee"),
+        company(db, "c-bg-coffee"),
         None,
         "EQUIPMENT",
         1_800_000,
@@ -1191,18 +1186,12 @@ def create_seed(now: int) -> Db:
         coffee_start,
         [document("EQUIPMENT_INVOICE", "Счёт_кофемашина.pdf", 156_880, coffee_start - 5 * MINUTE)],
     )
-    apply_decision(
-        db,
-        coffee,
-        DecisionInput("APPROVED", ["Обороты по счёту растут или стабильны", "Кредитная история без просрочек"], rate=18),
-        "SYSTEM",
-        SYSTEM_ACTOR,
-        run_pipeline(db, coffee, coffee_start, 20_000, "Соколова Евгения Андреевна"),
-    )
+    run_pipeline(db, coffee, coffee_start)
 
-    db.notifications = []
-    contract_number = history.app.contract.number if history.app.contract else ""
-    disbursed_ms = parse_ms(history.disbursed_at) if history.disbursed_at else now - 150 * DAY
+    db.flush()
+    db.clear_notifications()
+    contract_number = history.contract.number if history.contract else ""
+    disbursed_ms = history.disbursed_at or now - 150 * DAY
     seed_notification(
         db,
         "u-client1",
@@ -1211,27 +1200,27 @@ def create_seed(now: int) -> Db:
         f"1 500 000 ₽ по договору {contract_number}. График платежей — в карточке заявки.",
         disbursed_ms,
         True,
-        history.app.id,
+        history.id,
     )
     seed_notification(
         db,
         "u-client1",
         "CONTRACT_READY",
         "Договор готов к подписанию",
-        "Проверьте условия и подтвердите подписание кодом.",
+        "Проверьте условия и подпишите договор квалифицированной электронной подписью.",
         disbursed_ms - 2 * HOUR,
         True,
-        history.app.id,
+        history.id,
     )
     seed_notification(
         db,
         "u-client3",
         "APPLICATION_SUBMITTED",
         "Заявка отправлена",
-        f"Заявка {review.app.number} принята банком.",
+        f"Заявка {review.number} принята банком.",
         review_start,
         True,
-        review.app.id,
+        review.id,
     )
     seed_notification(
         db,
@@ -1241,6 +1230,5 @@ def create_seed(now: int) -> Db:
         "Кредитный специалист изучит заявку. Обычно это занимает до 1 рабочего дня.",
         review_decision,
         False,
-        review.app.id,
+        review.id,
     )
-    return db
