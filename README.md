@@ -10,6 +10,7 @@
 ## Запуск в Docker
 
 ```bash
+cp .env.example .env                    # по желанию: пароль БД, порт фронтенда, модель Ollama
 cp backend/.env.example backend/.env    # по желанию: ключ LLM для Рэя
 docker compose up --build               # http://localhost:8080, пароль у всех учёток — demo
 ```
