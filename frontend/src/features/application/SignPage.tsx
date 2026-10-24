@@ -45,8 +45,12 @@ function stepIndex(status: ApplicationStatus): number {
 function contractDocument(html: string): string {
   return `<!doctype html><html lang="ru"><head><meta charset="utf-8"><style>
 body{margin:0;padding:28px 32px;font:14px/1.65 -apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#20211f;background:#fff}
-h1,h2,h3{line-height:1.3;letter-spacing:-.01em}h1{font-size:20px}h2{font-size:16px;margin-top:22px}
-table{border-collapse:collapse;width:100%;margin:12px 0}td,th{border:1px solid #e3e4df;padding:8px 10px;text-align:left}
+h1,h2,h3{line-height:1.3;letter-spacing:-.01em}h1{font-size:20px}h2{font-size:18px;margin:0 0 8px;text-align:center}h3{font-size:15px;margin:24px 0 8px}
+p{margin:6px 0}.meta{margin:2px 0;color:#6b6e66;font-size:13px;text-align:center}.note{color:#6b6e66;font-size:13px}.sub{margin-left:24px}
+table{border-collapse:collapse;width:100%;margin:12px 0}td,th{border:1px solid #e3e4df;padding:8px 10px;text-align:left;vertical-align:top}
+.terms th{width:40%;font-weight:600;background:#f7f7f4}.parties td,.parties th{width:50%}
+.schedule{font-size:13px}.schedule td,.schedule th{padding:6px 8px}.schedule td:nth-child(n+3),.schedule th:nth-child(n+3){text-align:right;white-space:nowrap}.schedule tfoot td{font-weight:600}
+.signed{margin:12px 0;padding:10px 12px;border:1px solid #cfe3cf;border-radius:8px;background:#f3f9f2}
 </style></head><body>${html}</body></html>`
 }
 

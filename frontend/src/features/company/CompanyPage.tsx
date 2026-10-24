@@ -9,7 +9,6 @@ import { formatBusinessAge, formatDate, formatTerm, formatUpdated, plural } from
 import { legalFormLabels, taxSystemLabels } from '@/shared/lib/labels'
 import { formatMoney, formatRate } from '@/shared/lib/money'
 import { Badge, Card, EmptyState, ErrorState, PageHeader, ProgressBar, Skeleton, StatusBadge, StatusTile } from '@/shared/ui'
-import { CompanyGate } from './CompanyGate'
 import styles from './CompanyPage.module.css'
 
 function initials(name: string): string {
@@ -28,14 +27,6 @@ function applicationLink(application: ApplicationShort): string {
 }
 
 export function CompanyPage() {
-  return (
-    <CompanyGate eyebrow="Компания" title="Компания не добавлена" description="Привяжите ИП или юрлицо по ИНН — данные подтянутся из ЕГРЮЛ и ЕГРИП.">
-      <CompanyContent />
-    </CompanyGate>
-  )
-}
-
-function CompanyContent() {
   const user = useCurrentUser()
   const navigate = useNavigate()
   const company = useQuery({ queryKey: queryKeys.company, queryFn: companyApi.get })

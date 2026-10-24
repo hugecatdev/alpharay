@@ -224,7 +224,7 @@ export function ReviewStep({ application, insights, nav, mockFail }: ReviewStepP
             items={
               application.documents.length
                 ? application.documents.map((document) => ({ label: documentKindLabels[document.kind], value: document.filename }))
-                : [{ label: 'Загружено', value: 'Нет файлов — выписку по счёту получим автоматически' }]
+                : [{ label: 'Загружено', value: 'Нет файлов' }]
             }
           />
         </SummaryBlock>
@@ -248,7 +248,7 @@ export function ReviewStep({ application, insights, nav, mockFail }: ReviewStepP
           <div data-assist="consent-personal">
             <Checkbox
               label={CONSENT_LABELS.personal_data}
-              description="Для проверки по ЕГРЮЛ, ФНС и рассмотрения заявки"
+              description="Нужно для рассмотрения заявки"
               checked={consents.personal_data}
               invalid={showErrors && !consents.personal_data}
               onChange={(event) => toggle('personal_data', event.target.checked)}
@@ -298,8 +298,7 @@ export function ReviewStep({ application, insights, nav, mockFail }: ReviewStepP
       )}
 
       <Alert tone="neutral">
-        После отправки заявка автоматически пройдёт проверку данных, запрос в ЕГРЮЛ, ФНС и БКИ и оценку. Статус будет обновляться на
-        странице заявки — ничего не нужно ждать по почте или SMS.
+        После отправки следите за статусом на странице заявки — там же появится решение.
       </Alert>
 
       <WizardFooter

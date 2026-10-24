@@ -744,11 +744,6 @@
   grid-column: 1 / -1;
 }
 
-.companySource {
-  font-size: 15px;
-  color: var(--muted);
-}
-
 .hintWarning {
   color: var(--amber);
 }

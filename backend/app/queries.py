@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from app.fmt import HOUR, iso
-from app.models import SYSTEM_ACTOR, ApplicationRecord, DecisionRecord
+from app.models import SYSTEM_ACTOR, ApplicationRecord
 from app.repo import Db
 from app.schemas import (
     AppEvent,
@@ -163,8 +163,12 @@ def client_events(db: Db, application_id: str) -> list[AppEvent]:
     return result
 
 
-def is_automatic(decision: DecisionRecord | None) -> bool:
-    return decision is not None and decision.actor_type == "SYSTEM"
+def review_completed(record: ApplicationRecord) -> bool:
+    return record.decision is not None and record.decision.outcome in ("APPROVED", "COUNTER_OFFER", "REJECTED")
+
+
+def is_automatic(record: ApplicationRecord) -> bool:
+    return review_completed(record) and all(decision.actor_type == "SYSTEM" for decision in record.decisions)
 
 
 @dataclass(frozen=True)

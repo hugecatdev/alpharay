@@ -173,10 +173,6 @@ class Company(CompanyLookup):
     id: str
 
 
-class LinkCompanyRequest(BaseModel):
-    inn: str = ""
-
-
 class TurnoverMonth(BaseModel):
     month: str
     inflow: int

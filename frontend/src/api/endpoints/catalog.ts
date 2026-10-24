@@ -7,7 +7,6 @@ export const configApi = {
 
 export const companyApi = {
   get: () => request<Company>('/company'),
-  link: (inn: string) => request<Company>('/company', { method: 'POST', body: { inn } }),
   lookup: (inn: string) => request<CompanyLookup>('/company/lookup', { query: { inn } }),
   insights: () => request<CompanyInsights>('/company/insights'),
 }

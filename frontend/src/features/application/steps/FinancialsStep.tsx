@@ -233,7 +233,7 @@ export function FinancialsStep({ application, insights, nav }: FinancialsStepPro
         <>
           {!initial.fromAccount && !application.financials && (
             <Alert tone="neutral" title="Заполните показатели вручную">
-              У банка пока нет выписки по вашему счёту. Возьмите цифры из бухгалтерии или налоговой декларации — банк сверит их с данными ФНС.
+              У банка пока нет выписки по вашему счёту. Возьмите цифры из бухгалтерии или налоговой декларации.
             </Alert>
           )}
           <section className={styles.section}>

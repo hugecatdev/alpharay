@@ -2,35 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { applicationsApi, companyApi, queryKeys } from '@/api'
 import { useAssistantScreen } from '@/features/assistant/AssistantProvider'
 import { useCurrentUser } from '@/features/auth/AuthProvider'
-import { CompanyGate } from '@/features/company/CompanyGate'
 import { statusGroup } from '@/shared/lib/statusMeta'
 import { ErrorState } from '@/shared/ui'
 import { ApplicationsCard } from './ApplicationsCard'
 import { CompanyHero, FinancingCta } from './CompanyHero'
 import { DebtLoadCard } from './DebtLoadCard'
-import { NotificationsCard } from './NotificationsCard'
 import { TurnoverCard } from './TurnoverCard'
 import styles from './Dashboard.module.css'
 
-function firstName(fullName: string): string {
-  const parts = fullName.split(/\s+/).filter(Boolean)
-  return (parts.length === 3 ? parts[1] : parts[0]) ?? ''
-}
-
 export function DashboardPage() {
-  const user = useCurrentUser()
-  return (
-    <CompanyGate
-      eyebrow="Личный кабинет"
-      title={`Здравствуйте, ${firstName(user.full_name)}`}
-      description="Начнём с компании: по ИНН подставим реквизиты, и можно будет подать заявку."
-    >
-      <DashboardContent />
-    </CompanyGate>
-  )
-}
-
-function DashboardContent() {
   const user = useCurrentUser()
   const company = useQuery({ queryKey: queryKeys.company, queryFn: companyApi.get })
   const insights = useQuery({ queryKey: queryKeys.insights, queryFn: companyApi.insights })
@@ -68,8 +48,6 @@ function DashboardContent() {
       </section>
 
       <TurnoverCard insights={insights.data} loading={insights.isLoading} />
-
-      <NotificationsCard />
     </div>
   )
 }

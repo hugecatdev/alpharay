@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Save } from 'lucide-react'
 import type { Application, CompanyInsights, Product } from '@/api'
-import { CompanyGate } from '@/features/company/CompanyGate'
 import { useConfig } from '@/shared/hooks/useConfig'
 import { creditSummary } from '@/shared/lib/annuity'
 import { ButtonLink, Card, ErrorState, PageHeader, PageLoader, StatusBadge, Stepper } from '@/shared/ui'
@@ -23,11 +22,11 @@ const MOCK_FAIL_MODES = [1, 2] as const
 
 const descriptions: Record<StepKey, string> = {
   product: 'Начните с цели — подскажем подходящий продукт. Условия можно поменять до отправки заявки.',
-  amount: 'Подберите сумму и срок так, чтобы платёж комфортно вписывался в денежный поток бизнеса.',
-  company: 'Проверим компанию по ЕГРЮЛ — вводить реквизиты вручную не нужно.',
+  amount: 'Выберите сумму и срок, которые будут по силам бизнесу.',
+  company: 'Убедитесь, что реквизиты актуальны — на эту компанию оформим заявку и договор.',
   financials: 'Выручка, расходы и текущие платежи за последние 12 месяцев.',
-  documents: 'Приложите то, чего у банка ещё нет. Остальное получим сами.',
-  review: 'Проверьте данные, дайте согласия и отправьте заявку на рассмотрение.',
+  documents: 'Документы нужны не для всех заявок — список ниже покажет, что приложить вам.',
+  review: 'Проверьте всё перед отправкой — после неё заявку уже не изменить.',
 }
 
 function buildSummary(application: Application | null, products: Product[], live: LiveParams, insights: CompanyInsights | undefined) {
@@ -47,20 +46,6 @@ function buildSummary(application: Application | null, products: Product[], live
 }
 
 export function ApplicationWizard() {
-  const { id } = useParams()
-  if (id) return <WizardContent />
-  return (
-    <CompanyGate
-      eyebrow="Новая заявка"
-      title="Сначала добавим компанию"
-      description="Заявку подаёт ИП или юрлицо — так банк сможет проверить бизнес по ЕГРЮЛ, ФНС и кредитной истории."
-    >
-      <WizardContent />
-    </CompanyGate>
-  )
-}
-
-function WizardContent() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()

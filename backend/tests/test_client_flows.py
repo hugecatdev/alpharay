@@ -58,6 +58,11 @@ def test_client1_approved_signed_disbursed(api: Api) -> None:
     contract = api.ok(api.get(f"/applications/{app['id']}/contract"))
     assert "2 000 000 ₽" in contract["html"] and "19,5% годовых" in contract["html"]
     assert "смоделированы" in contract["html"]
+    assert (
+        "Устава действует генеральный директор" in contract["html"] and "Расчётный счёт № 40702810" in contract["html"]
+    )
+    assert "Заверения об обстоятельствах" in contract["html"] and "Приложение № 1. График платежей" in contract["html"]
+    assert "более 60 дней" not in contract["html"]
 
     assert api.ok(api.post(f"/applications/{app['id']}/sign")) == {"confirmation_code": "4821"}
     assert api.ok(api.post(f"/applications/{app['id']}/sign"))["confirmation_code"] == "4821"
@@ -182,6 +187,9 @@ def test_client2_counter_offer_and_markup(api: Api) -> None:
     api.login("client2@demo.local")
     accepted = api.ok(api.post(f"/applications/{big['id']}/offer/accept"))
     assert accepted["status"] == "OFFER_ACCEPTED" and accepted["amount"] == 950_000
+    individual = api.ok(api.get(f"/applications/{big['id']}/contract"))["html"]
+    assert "Индивидуальный предприниматель" in individual and "ОГРНИП" in individual and "950 000 ₽" in individual
+    assert "действует генеральный директор" not in individual and "Расчётный счёт № 40802810" in individual
 
     small = api.fill_draft("WORKING_CAPITAL", 800_000, 12)
     api.ok(api.post(f"/applications/{small['id']}/submit"))
@@ -373,26 +381,12 @@ def test_bki_outage_goes_to_specialist_not_rejection(api: Api) -> None:
     assert [check["status"] for check in bki] == ["ERROR", "ERROR", "ERROR"]
 
 
-def test_client6_onboarding(api: Api) -> None:
-    user = api.login("client6@demo.local")
-    assert user["company_id"] is None
-    assert api.get("/company").json()["code"] == "NO_COMPANY"
-    assert api.get("/company/insights").status_code == 404
-    assert api.post("/applications", json={"product_code": "WORKING_CAPITAL"}).json()["code"] == "NO_COMPANY"
-
+def test_company_lookup(api: Api) -> None:
+    api.login("client1@demo.local")
     assert api.get("/company/lookup", params={"inn": "123"}).json()["code"] == "INVALID_INN"
     assert api.get("/company/lookup", params={"inn": "0000000000"}).status_code == 404
-    taken = api.post("/company", json={"inn": "7714382915"})
-    assert taken.status_code == 409 and taken.json()["code"] == "ALREADY_LINKED"
-
-    found = api.ok(api.get("/company/lookup", params={"inn": "7714 0528 3916"}))
-    assert found["name"] == "ИП Петров П.С." and "id" not in found
-    linked = api.ok(api.post("/company", json={"inn": "771405283916"}))
-    assert linked["id"] == "c-registry-petrov"
-    assert api.ok(api.get("/auth/me"))["company_id"] == "c-registry-petrov"
-    assert api.post("/company", json={"inn": "771405283916"}).json()["code"] == "COMPANY_EXISTS"
-    insights = api.ok(api.get("/company/insights"))
-    assert insights == {"turnover": [], "avg_free_cash_flow": 0, "pre_approved_limit": 0, "loans": []}
+    found = api.ok(api.get("/company/lookup", params={"inn": "7714 3829 15"}))
+    assert found["name"] == "ООО «Пекарня Ветер»" and "id" not in found
 
 
 def test_notifications_read(api: Api) -> None:
@@ -451,7 +445,8 @@ def test_overdraft_has_no_annuity_schedule(api: Api) -> None:
     assert approved["status"] == "APPROVED"
     assert approved["offer"]["monthly_payment"] == 21_000
     contract = api.ok(api.get(f"/applications/{app['id']}/contract"))["html"]
-    assert "Лимит овердрафта" in contract and "аннуитет" not in contract.replace("Графика аннуитетных платежей нет", "")
+    assert "Лимит овердрафта" in contract and "аннуитет" not in contract
+    assert "статья 850" in contract and "Приложение № 1" not in contract
     assert api.ok(api.get(f"/applications/{app['id']}/schedule")) == []
 
 

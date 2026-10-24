@@ -6,7 +6,7 @@ from app.deps import ClientCtx
 from app.errors import ApiError
 from app.insights import company_insights
 from app.models import CompanyRecord
-from app.schemas import Company, CompanyInsights, CompanyLookup, LinkCompanyRequest
+from app.schemas import Company, CompanyInsights, CompanyLookup
 
 router = APIRouter(prefix="/company", tags=["company"])
 
@@ -35,17 +35,6 @@ def registry_company(ctx: ClientCtx, raw: str) -> CompanyRecord:
 @router.get("", response_model=Company)
 def get_company(ctx: ClientCtx) -> Company:
     return own_company(ctx).company
-
-
-@router.post("", response_model=Company)
-def link_company(body: LinkCompanyRequest, ctx: ClientCtx) -> Company:
-    if ctx.user.company_id:
-        raise ApiError(409, "COMPANY_EXISTS", "Компания уже добавлена")
-    mc = registry_company(ctx, body.inn)
-    if ctx.db.company_has_user(mc.id):
-        raise ApiError(409, "ALREADY_LINKED", "Эта компания уже подключена к другому пользователю")
-    ctx.user.company_id = mc.id
-    return mc.company
 
 
 @router.get("/lookup", response_model=CompanyLookup)

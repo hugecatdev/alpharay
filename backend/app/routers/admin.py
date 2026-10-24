@@ -18,7 +18,7 @@ from app.labels import (
 )
 from app.models import ApplicationRecord, ProductRecord, UserRecord, uid
 from app.pipeline import assign
-from app.queries import is_automatic, review_span, to_bank_application, to_bank_short
+from app.queries import is_automatic, review_completed, review_span, to_bank_application, to_bank_short
 from app.repo import Db
 from app.schemas import (
     AdminApplicationRow,
@@ -125,14 +125,9 @@ def dashboard(
         return sum(1 for record in records if record.status in statuses)
 
     disbursed = [record for record in records if record.status == "DISBURSED"]
-    final = [
-        record
-        for record in submitted
-        if record.decision and record.decision.outcome in ("APPROVED", "COUNTER_OFFER", "REJECTED")
-    ]
+    final = [record for record in submitted if review_completed(record)]
     positive = sum(1 for record in final if record.decision and record.decision.outcome != "REJECTED")
-    decided = [record for record in submitted if record.decision and record.decision.outcome != "MANUAL_REVIEW"]
-    automatic = sum(1 for record in decided if is_automatic(record.decision))
+    automatic = sum(1 for record in final if is_automatic(record))
     to_decision = [value for value in (minutes_to_decision(db, record) for record in submitted) if value is not None]
     spans = [span for span in (review_span(db, record) for record in submitted) if span]
 
@@ -182,7 +177,7 @@ def dashboard(
             disbursed_amount=sum(record.amount for record in disbursed),
         ),
         approval_rate=rounded(positive / len(final), 2) if final else 0,
-        auto_decision_share=rounded(automatic / len(decided), 2) if decided else 0,
+        auto_decision_share=rounded(automatic / len(final), 2) if final else 0,
         avg_time_to_decision_minutes=rounded(sum(to_decision) / len(to_decision)) if to_decision else 0,
         avg_manual_review_hours=rounded(sum(span.hours for span in spans) / len(spans)) if spans else 0,
         funnel=[

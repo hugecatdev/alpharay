@@ -40,6 +40,30 @@ def test_queue_card_and_stats(api: Api) -> None:
     assert 0 < stats["auto_decision_share"] < 1 and stats["avg_review_hours"] > 0
 
 
+def test_auto_decision_share_counts_completed_reviews_without_staff(api: Api) -> None:
+    api.login("underwriter@bank.local")
+    assert api.ok(api.get("/bank/stats"))["auto_decision_share"] == 0.75
+
+    api.login("client1@demo.local")
+    app = api.fill_draft("WORKING_CAPITAL", 1_000_000, 12)
+    api.ok(api.post(f"/applications/{app['id']}/submit", params={"mock_fail": 2}))
+    assert api.wait(app["id"], 20)["status"] == "MANUAL_REVIEW"
+
+    api.login("underwriter@bank.local")
+    api.ok(api.post(f"/bank/applications/{app['id']}/assign"))
+    api.ok(api.post(f"/bank/applications/{app['id']}/decision", json={"type": "NEED_INFO", "items": ["revenue_12m"]}))
+    assert api.ok(api.get("/bank/stats"))["auto_decision_share"] == 0.75
+
+    api.login("client1@demo.local")
+    request = api.ok(api.get(f"/applications/{app['id']}"))["info_request"]
+    answer = {"code": "revenue_12m", "value": str(app["financials"]["revenue_12m"])}
+    api.ok(api.post(f"/applications/{app['id']}/info-requests/{request['id']}/respond", json={"answers": [answer]}))
+    assert api.wait(app["id"])["status"] == "APPROVED"
+
+    api.login("underwriter@bank.local")
+    assert api.ok(api.get("/bank/stats"))["auto_decision_share"] == 0.6
+
+
 def test_counter_offer_by_underwriter_then_client_accepts(api: Api) -> None:
     review_id = client3_review_id(api)
     assigned = api.ok(api.post(f"/bank/applications/{review_id}/assign"))

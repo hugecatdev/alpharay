@@ -35,7 +35,7 @@ def prompt_template() -> Template:
 def describe_company(db: Db, user: UserRecord, now: int) -> str:
     mc = db.find_company(user.company_id)
     if not mc:
-        return "ещё не добавлена — клиент на онбординге, заявку подать нельзя, пока не привязан ИП или юрлицо."
+        return "не найдена в профиле — заявку подать нельзя."
     company = mc.company
     kind = "ИП" if company.legal_form == "IP" else "ООО"
     loans = company_loans(db, mc, now)

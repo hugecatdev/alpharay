@@ -1,47 +1,82 @@
-# AlphaRay — умный кредитный кабинет
+# AlphaRay - умный кредитный кабинет
 
-Прототип цифрового кредитного конвейера для малого бизнеса: кабинет предпринимателя, кабинет андеррайтера и ИИ-ассистент Рэй. Данные и состояние заявок хранятся в PostgreSQL, этапы конвейера выполняет отдельный воркер.
+Прототип кредитного конвейера для малого бизнеса.
 
-- `frontend/` — React + Vite, nginx в Docker ([README](frontend/README.md), тестовые учётки — [DEMO_ACCOUNTS.txt](frontend/DEMO_ACCOUNTS.txt));
-- `backend/` — FastAPI + SQLAlchemy + Alembic: конвейер и воркер, проверки, скоринг и кредитные правила, договор, кабинет андеррайтера, администрирование банка, ассистент ([README](backend/README.md));
-- [`docs/architecture.md`](docs/architecture.md) — архитектура: контекст, контейнеры, компоненты, статусы и переходы, сквозной кредитный путь, данные, ассистент, безопасность и надёжность, путь к промышленной версии;
-- `docs/api/openapi.json` — схема API, `docs/prompts/` — исходное ТЗ.
+## Архитектура
 
-## Запуск в Docker
+### Контекст системы
+
+![Контекст системы](docs/diagrams/context.png)
+
+### Контейнеры
+
+![Контейнеры](docs/diagrams/containers.png)
+
+### Бэкенд
+
+![Бэкенд](docs/diagrams/backend.png)
+
+### Статусы заявки
+
+![Статусы заявки](docs/diagrams/statuses.png)
+
+### Фронтенд
+
+![Фронтенд](docs/diagrams/frontend.png)
+
+### Путь заявки
+
+![Путь заявки](docs/diagrams/flow.png)
+
+### Ассистент
+
+![Ассистент](docs/diagrams/assistant.png)
+
+### Модель данных
+
+![Модель данных](docs/diagrams/data.png)
+
+ЕГРЮЛ, ФНС, БКИ, подписание и выдача смоделированы с синтетическими данных.
+Подробно - [docs/architecture.md](docs/architecture.md).
+
+## Компоненты
+
+- Бэкенд: Python 3.13, FastAPI, SQLAlchemy, Alembic.
+- База: PostgreSQL 17.6.
+- Фронтенд: React 18, TypeScript, Vite.
+- Запуск: Docker Compose.
+
+Версии зафиксированы в `backend/poetry.lock` и `frontend/package-lock.json`.
+
+## Запуск
 
 ```bash
-cp .env.example .env                    # по желанию: пароль БД, порт фронтенда, модель Ollama
-cp backend/.env.example backend/.env    # по желанию: ключ LLM для Рэя
-docker compose up --build               # http://localhost:8080, пароль у всех учёток — demo
+docker compose up --build
 ```
 
-Поднимаются `postgres` (PostgreSQL 17), `backend` (API), `worker` (конвейер) и `frontend` (nginx). При первом старте бэкенд применяет миграции и загружает демо-данные; при следующих — данные сохраняются. Данные лежат в томах `postgres-data` и `backend-data` (загруженные файлы). Сбросить демо: `docker compose exec backend python -m app.cli reset-demo` или `docker compose down -v`.
+Откройте http://localhost:8080. Пароль у всех учёток - `demo`.
 
-Проверить готовность: `http://localhost:8080/api/health/ready`. Логи — JSON, у каждого запроса `X-Request-ID`, он же — `correlation_id` в ошибках и истории заявки.
+## Переменные окружения
 
-## ИИ-ассистент и LLM
+Всё работает без настроек. При желании:
 
-Рэй работает через любой OpenAI-совместимый API с моделью с открытыми весами. Провайдер задаётся в `backend/.env`:
+- `.env` (шаблон `.env.example`) - пароль базы
+- `backend/.env` (шаблон `backend/.env.example`) - ключ `LLM_API_KEY` для Ассистента.
 
-```bash
-LLM_BASE_URL=https://api.groq.com/openai/v1
-LLM_API_KEY=gsk_...
-LLM_MODEL=openai/gpt-oss-120b
-```
+## Учётки
 
-Без ключа Рэй скрыт, а весь сценарий проходит формами — платные ресурсы для проверки не нужны. Локальная модель без внешних сервисов:
+| Почта | Что покажет |
+|---|---|
+| `client1@demo.local` | одобрение и выдача |
+| `client3@demo.local` | ручное рассмотрение |
+| `client4@demo.local` | отказ |
+| `client5@demo.local` | запрос информации |
+| `underwriter@bank.local` | кабинет андеррайтера |
+| `admin@bank.local` | кабинет руководителя |
 
-```bash
-# backend/.env: LLM_BASE_URL=http://ollama:11434/v1  LLM_API_KEY=ollama  LLM_MODEL=qwen3:8b
-docker compose --profile ollama up --build
-```
+см. [frontend/DEMO_ACCOUNTS.txt](frontend/DEMO_ACCOUNTS.txt).
 
-Модель для профиля `ollama` задаётся `OLLAMA_MODEL` (по умолчанию `qwen3:8b`) и скачивается при первом запуске.
+## Документация
 
-## Тесты
-
-```bash
-docker run -d --name alpharay-test-pg -e POSTGRES_PASSWORD=test -p 127.0.0.1:55432:5432 postgres:17.6-alpine3.22
-cd backend && .venv/bin/pytest                         # бэкенд на PostgreSQL
-cd frontend && CHROMIUM_PATH=/usr/bin/chromium npm run e2e   # Playwright, сам поднимает бэкенд и vite
-```
+- [docs/architecture.md](docs/architecture.md) - схема, статусы заявки, модель данных.
+- [docs/api/openapi.json](docs/api/openapi.json) - API, Swagger

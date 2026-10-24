@@ -1,8 +1,7 @@
 [project]
 name = "alpharay-backend"
 version = "0.1.0"
-description = "AlphaRay — бэкенд умного кредитного кабинета"
-readme = "README.md"
+description = "AlphaRay"
 requires-python = ">=3.12,<4.0"
 dependencies = [
     "fastapi (>=0.157.0,<0.158.0)",
@@ -20,23 +19,18 @@ dependencies = [
 
 [tool.poetry]
 package-mode = false
-
 [tool.poetry.group.dev.dependencies]
 pytest = "^9.1.1"
 ruff = "^0.17.1"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning:fastapi.testclient", "ignore:.*httpx2.*"]
-
 [tool.ruff]
 line-length = 120
 target-version = "py312"
-
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
 ignore = ["E501"]
-
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

@@ -67,7 +67,6 @@ SCREEN_TARGETS: dict[str, dict[str, str]] = {
     },
     "notifications": {"notifications-list": "список уведомлений"},
     "company": {"company-profile": "реквизиты компании", "company-loans": "действующие кредиты"},
-    "onboarding": {"company-inn": "поле ИНН компании"},
 }
 
 

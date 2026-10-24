@@ -93,7 +93,6 @@ export function DocumentsStep({ application, nav }: { application: Application; 
             Что нужно для рассмотрения
             <AskButton question="Какие документы нужны для этой заявки и зачем?" />
           </h3>
-          <span className={styles.sectionHint}>Чем меньше ручной загрузки, тем быстрее решение</span>
         </div>
         <ul className={styles.checklist}>
           <li className={styles.checkRow}>
@@ -102,7 +101,7 @@ export function DocumentsStep({ application, nav }: { application: Application; 
             </span>
             <span className={styles.checkText}>
               Выписка по расчётному счёту в AlphaRay
-              <small>Получим автоматически — загружать не нужно</small>
+              <small>Уже есть у банка</small>
             </span>
             <Check size={18} color="var(--green-strong)" />
           </li>
@@ -112,7 +111,7 @@ export function DocumentsStep({ application, nav }: { application: Application; 
             </span>
             <span className={styles.checkText}>
               Сведения ФНС и бюро кредитных историй
-              <small>Запросим сами по вашему согласию на последнем шаге</small>
+              <small>Достаточно вашего согласия на последнем шаге</small>
             </span>
             <Check size={18} color="var(--green-strong)" />
           </li>
@@ -134,7 +133,7 @@ export function DocumentsStep({ application, nav }: { application: Application; 
             </span>
             <span className={styles.checkText}>
               Выписки из других банков, декларации
-              <small>По желанию — ускоряют решение, если часть оборотов не в AlphaRay</small>
+              <small>По желанию — если часть выручки идёт через другие банки</small>
             </span>
           </li>
         </ul>

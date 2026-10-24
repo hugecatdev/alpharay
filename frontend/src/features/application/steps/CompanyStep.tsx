@@ -49,7 +49,6 @@ function CompanyData({ company }: { company: CompanyLookup }) {
           </div>
         ))}
       </dl>
-      <p className={styles.companySource}>Данные из ЕГРЮЛ и ФНС — менять их не нужно.</p>
     </div>
   )
 }
@@ -117,8 +116,7 @@ export function CompanyStep({ application, nav }: { application: Application; na
           label="ИНН компании"
           assist="inn"
           error={innError}
-          hint="Предзаполнен из профиля. Проверим по ЕГРЮЛ и подтянем реквизиты."
-          help={<AskButton question="Зачем банку проверять ИНН и что такое ЕГРЮЛ?" />}
+          help={<AskButton question="Зачем банку проверять ИНН?" />}
         >
           {(id) => (
             <Input
@@ -149,8 +147,8 @@ export function CompanyStep({ application, nav }: { application: Application; na
       )}
 
       {checked && !mismatch && (
-        <Alert tone="success" title="Данные получены из ЕГРЮЛ и ФНС">
-          Реквизиты совпадают с профилем компании — менять их не нужно.
+        <Alert tone="success" title="Компания найдена">
+          Проверьте реквизиты и подтвердите, что они верны.
         </Alert>
       )}
 

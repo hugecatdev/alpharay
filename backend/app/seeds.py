@@ -83,7 +83,6 @@ DEMO_ACCOUNTS = [
     DemoAccount(
         email="client5@demo.local", title="ООО «ТехноСервис»", description="Выручка расходится с ФНС: запрос информации"
     ),
-    DemoAccount(email="client6@demo.local", title="Петров П.С.", description="Компания не добавлена: онбординг по ИНН"),
     DemoAccount(
         email="underwriter@bank.local", title="Андеррайтер", description="Очередь ручного рассмотрения и решения"
     ),
@@ -576,31 +575,6 @@ def demo_companies(now: int) -> list[CompanyRecord]:
     ]
 
 
-def registry_companies(now: int) -> list[CompanyRecord]:
-    company = Company(
-        id="c-registry-petrov",
-        inn="771405283916",
-        ogrn="324774600218734",
-        name="ИП Петров П.С.",
-        legal_form="IP",
-        registration_date=iso(add_months(now, -27))[:10],
-        okved_main="56.10",
-        okved_name="Деятельность ресторанов и услуги по доставке продуктов питания",
-        address="г. Москва, ул. Бутырская, д. 46, пом. 2",
-        head_name="Петров Павел Сергеевич",
-        tax_system="USN_6",
-        employees_count=4,
-    )
-    stored = make_company(
-        company,
-        FnsInput(),
-        BkiData(rating=690, rating_label="Средний", active_loans=[], closed_loans=[], max_overdue_days_24m=0),
-        [],
-    )
-    stored.fns.declared_revenue_12m = 9_600_000
-    return [stored]
-
-
 @dataclass
 class Background:
     id: str
@@ -801,7 +775,6 @@ def demo_users(now: int) -> list[UserRecord]:
         ("u-client3", "client3@demo.local", "Лебедева Ольга Николаевна", "CLIENT", "Главный бухгалтер", "c-client3"),
         ("u-client4", "client4@demo.local", "Гусейнов Тимур Рашидович", "CLIENT", "Генеральный директор", "c-client4"),
         ("u-client5", "client5@demo.local", "Орлов Денис Андреевич", "CLIENT", "Генеральный директор", "c-client5"),
-        ("u-client6", "client6@demo.local", "Петров Павел Сергеевич", "CLIENT", "Предприниматель", None),
         ("u-underwriter", "underwriter@bank.local", UNDERWRITER_NAME, "UNDERWRITER", "Кредитный аналитик", None),
         (
             "u-underwriter2",
@@ -954,7 +927,6 @@ def seed_catalog(db: Db, now: int) -> None:
 def seed_companies(db: Db, now: int) -> None:
     for record in [
         *demo_companies(now),
-        *registry_companies(now),
         *(background_company(now, item) for item in BACKGROUND),
     ]:
         record.created_at = now

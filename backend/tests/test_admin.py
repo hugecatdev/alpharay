@@ -46,7 +46,7 @@ def test_dashboard(api: Api) -> None:
     assert totals["applications"] == 9 and totals["drafts"] == 1 and totals["manual_review"] == 3
     assert totals["awaiting_client"] == 2 and totals["rejected"] == 1
     assert totals["disbursed_count"] == 2 and totals["disbursed_amount"] == 13_500_000
-    assert board["approval_rate"] == 0.75 and board["auto_decision_share"] == 0.6
+    assert board["approval_rate"] == 0.75 and board["auto_decision_share"] == 0.75
     assert board["avg_manual_review_hours"] == 6 and board["avg_time_to_decision_minutes"] > 0
     assert len(board["funnel"]) == 17 and [item["code"] for item in board["by_product"]] == SEEDED_CODES
     staff = {item["id"]: item for item in board["underwriters"]}
@@ -218,9 +218,8 @@ def test_policy_drives_generic_decisions(api: Api) -> None:
             json=policy_payload(api, grades=grades, counter_offer_share=0.5, offer_valid_days=3),
         )
     )
-    api.login("client6@demo.local")
-    api.ok(api.post("/company", json={"inn": "771405283916"}))
-    app = api.fill_draft("WORKING_CAPITAL", 1_000_000, 12, revenue=9_600_000)
+    api.login("client1@demo.local")
+    app = api.fill_draft("WORKING_CAPITAL", 1_000_000, 12)
     api.ok(api.post(f"/applications/{app['id']}/submit"))
     offered = api.wait(app["id"])
     assert offered["status"] == "COUNTER_OFFER"

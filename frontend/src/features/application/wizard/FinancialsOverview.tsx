@@ -53,7 +53,7 @@ export function FinancialsOverview({ values, turnover, fromAccount, onEdit }: Fi
           <p>
             {fromAccount
               ? 'Последние 12 месяцев по расчётному счёту в AlphaRay. Если часть выручки идёт через другие банки — добавьте её.'
-              : 'Проверьте цифры перед отправкой — банк сверит их с данными ФНС.'}
+              : 'Проверьте цифры перед отправкой.'}
           </p>
         </div>
         <Button variant="secondary" size="sm" icon={<Pencil size={15} />} onClick={onEdit}>

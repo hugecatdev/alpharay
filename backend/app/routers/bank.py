@@ -13,7 +13,7 @@ from app.idempotency import IdempotencyDep
 from app.labels import FUNNEL_STATUSES, INFO_REQUEST_OPTIONS, REJECT_REASON_OPTIONS
 from app.models import ApplicationRecord, NoteRecord, uid
 from app.pipeline import actor_of, apply_verdict, assign, disburse
-from app.queries import events_of, is_automatic, review_span, to_bank_application, to_bank_short
+from app.queries import events_of, is_automatic, review_completed, review_span, to_bank_application, to_bank_short
 from app.schemas import (
     AppEvent,
     ApplicationNote,
@@ -56,12 +56,12 @@ def positive(value: float | None) -> float | None:
 @router.get("/stats", response_model=BankStats)
 def stats(ctx: BankCtx) -> BankStats:
     submitted = ctx.db.applications(submitted_only=True)
-    decided = [record for record in submitted if record.decision and record.decision.outcome != "MANUAL_REVIEW"]
-    automatic = sum(1 for record in decided if is_automatic(record.decision))
+    completed = [record for record in submitted if review_completed(record)]
+    automatic = sum(1 for record in completed if is_automatic(record))
     hours = [span.hours for span in (review_span(ctx.db, record) for record in submitted) if span]
     return BankStats(
         total=len(submitted),
-        auto_decision_share=js_round(automatic / len(decided) * 100) / 100 if decided else 0,
+        auto_decision_share=js_round(automatic / len(completed) * 100) / 100 if completed else 0,
         avg_amount=js_round(sum(record.amount for record in submitted) / len(submitted)) if submitted else 0,
         avg_review_hours=js_round(sum(hours) / len(hours) * 10) / 10 if hours else 0,
         funnel=[
