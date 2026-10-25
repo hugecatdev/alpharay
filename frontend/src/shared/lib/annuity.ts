@@ -13,9 +13,22 @@ export interface LoanSummary {
   overpayment: number
 }
 
+function amortization(amount: number, term: number, rate: number) {
+  const payment = Math.round(annuityPayment(amount, term, rate))
+  let balance = Math.max(0, Math.round(amount))
+  const rows = []
+  for (let index = 1; index <= term; index += 1) {
+    const interest = Math.round((balance * rate) / 1200)
+    const principal = index === term ? balance : Math.min(balance, Math.max(0, payment - interest))
+    balance -= principal
+    rows.push({ amount: principal + interest, principal, interest, balance })
+  }
+  return rows
+}
+
 export function loanSummary(amount: number, term: number, rate: number): LoanSummary {
   const monthly = Math.round(annuityPayment(amount, term, rate))
-  const total = monthly * term
+  const total = amortization(amount, term, rate).reduce((sum, row) => sum + row.amount, 0)
   return { monthly_payment: monthly, total_payment: total, overpayment: Math.max(0, total - amount) }
 }
 
@@ -36,22 +49,8 @@ export function maxAmountForPayment(payment: number, term: number, rate: number)
 }
 
 export function buildSchedule(amount: number, term: number, rate: number, start: Date = new Date()): Payment[] {
-  const monthly = rate / 1200
-  const payment = annuityPayment(amount, term, rate)
-  const rows: Payment[] = []
-  let balance = amount
-  for (let index = 1; index <= term; index += 1) {
-    const interest = balance * monthly
-    const principal = index === term ? balance : payment - interest
-    balance = Math.max(0, balance - principal)
-    const date = new Date(start.getFullYear(), start.getMonth() + index, Math.min(start.getDate(), 28))
-    rows.push({
-      date: date.toISOString(),
-      amount: Math.round(principal + interest),
-      principal: Math.round(principal),
-      interest: Math.round(interest),
-      balance: Math.round(balance),
-    })
-  }
-  return rows
+  return amortization(amount, term, rate).map((row, index) => {
+    const date = new Date(start.getFullYear(), start.getMonth() + index + 1, Math.min(start.getDate(), 28))
+    return { date: date.toISOString(), ...row }
+  })
 }

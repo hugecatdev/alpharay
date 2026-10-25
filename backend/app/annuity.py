@@ -21,9 +21,21 @@ def annuity_payment(amount: float, term: int, rate: float) -> float:
     return amount * monthly / (1 - (1 + monthly) ** -term)
 
 
+def amortization(amount: float, term: int, rate: float) -> list[tuple[int, int, int, int]]:
+    payment = js_round(annuity_payment(amount, term, rate))
+    balance = max(0, js_round(amount))
+    rows = []
+    for index in range(1, term + 1):
+        interest = js_round(balance * rate / 1200)
+        principal = balance if index == term else min(balance, max(0, payment - interest))
+        balance -= principal
+        rows.append((principal + interest, principal, interest, balance))
+    return rows
+
+
 def loan_summary(amount: float, term: int, rate: float) -> LoanSummary:
     monthly = js_round(annuity_payment(amount, term, rate))
-    total = monthly * term
+    total = sum(row[0] for row in amortization(amount, term, rate))
     return LoanSummary(monthly_payment=monthly, total_payment=total, overpayment=max(0, js_round(total - amount)))
 
 
@@ -47,24 +59,18 @@ def max_amount_for_payment(payment: float, term: int, rate: float) -> float:
 
 
 def build_schedule(amount: float, term: int, rate: float, start_ms: int) -> list[Payment]:
-    monthly = rate / 1200
-    payment = annuity_payment(amount, term, rate)
     start = local(start_ms)
     rows: list[Payment] = []
-    balance = float(amount)
-    for index in range(1, term + 1):
-        interest = balance * monthly
-        principal = balance if index == term else payment - interest
-        balance = max(0.0, balance - principal)
+    for index, (payment, principal, interest, balance) in enumerate(amortization(amount, term, rate), start=1):
         year, month = shift_month(start.year, start.month, index)
         date = datetime(year, month, min(start.day, 28), tzinfo=TZ)
         rows.append(
             Payment(
                 date=iso(to_ms(date)),
-                amount=js_round(principal + interest),
-                principal=js_round(principal),
-                interest=js_round(interest),
-                balance=js_round(balance),
+                amount=payment,
+                principal=principal,
+                interest=interest,
+                balance=balance,
             )
         )
     return rows

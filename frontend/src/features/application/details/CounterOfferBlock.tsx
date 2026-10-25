@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { ArrowRight, Check } from 'lucide-react'
 import { applicationsApi, type Application, type Offer } from '@/api'
 import { AskButton } from '@/features/assistant/AskButton'
+import { loanSummary } from '@/shared/lib/annuity'
 import { cn } from '@/shared/lib/cn'
 import { formatDate, formatTerm } from '@/shared/lib/dates'
 import { formatMoney, formatRate } from '@/shared/lib/money'
@@ -21,10 +22,6 @@ interface Row {
   emphasis?: boolean
 }
 
-function overpayment(amount: number, term: number, monthly: number) {
-  return Math.max(0, Math.round(monthly * term - amount))
-}
-
 function rowsFor(offer: Offer): Row[] {
   const { requested } = offer
   return [
@@ -41,8 +38,8 @@ function rowsFor(offer: Offer): Row[] {
     },
     {
       label: 'Переплата за срок',
-      requested: overpayment(requested.amount, requested.term, requested.monthly_payment),
-      offered: overpayment(offer.amount, offer.term, offer.monthly_payment),
+      requested: loanSummary(requested.amount, requested.term, requested.rate).overpayment,
+      offered: loanSummary(offer.amount, offer.term, offer.rate).overpayment,
       format: formatMoney,
       better: 'lower',
     },

@@ -125,7 +125,7 @@ function ApprovedBlock({ application }: { application: Application }) {
   const revolving = application.product.repayment === 'REVOLVING'
   const summary = creditSummary(application.product.repayment, amount, term, rate)
   const monthly = offer?.monthly_payment ?? summary.monthly_payment
-  const overpayment = revolving ? summary.overpayment : Math.max(0, Math.round(monthly * term - amount))
+  const overpayment = summary.overpayment
 
   return (
     <div className={styles.approved}>
@@ -155,7 +155,7 @@ function ApprovedBlock({ application }: { application: Application }) {
                 { label: 'Срок', value: formatTerm(term) },
                 { label: 'Ставка', value: formatRate(rate) },
                 { label: 'Переплата', value: formatMoney(overpayment) },
-                { label: 'Всего к возврату', value: formatMoney(monthly * term) },
+                { label: 'Всего к возврату', value: formatMoney(summary.total_payment) },
                 { label: 'Действует до', value: offer ? formatDate(offer.valid_until) : '—' },
               ]
         }

@@ -79,7 +79,7 @@ def test_client1_approved_signed_disbursed(api: Api) -> None:
     assert disbursement["operation_number"].startswith("PAY-") and disbursement["account_number"].startswith("40702810")
     schedule = api.ok(api.get(f"/applications/{app['id']}/schedule"))
     assert len(schedule) == 24 and schedule[-1]["balance"] == 0
-    assert sum(row["principal"] for row in schedule) in range(1_999_990, 2_000_011)
+    assert sum(row["principal"] for row in schedule) == 2_000_000
 
     statuses = [event["to_status"] for event in api.ok(api.get(f"/applications/{app['id']}/events"))]
     assert statuses == ["DRAFT", "SUBMITTED", "APPROVED", "OFFER_ACCEPTED", "SIGNING", "SIGNED", "DISBURSED"]
