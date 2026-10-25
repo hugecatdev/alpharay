@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowUpRight, CheckCircle2, FileSignature, FlaskConical, KeyRound, LayoutGrid, ShieldCheck } from 'lucide-react'
+import { ArrowUpRight, CheckCircle2, Download, FileSignature, FlaskConical, KeyRound, LayoutGrid, ShieldCheck } from 'lucide-react'
 import { applicationsApi, queryKeys, type Application, type ApplicationStatus, type SigningCertificate } from '@/api'
 import { AskButton } from '@/features/assistant/AskButton'
 import { useAssistantScreen } from '@/features/assistant/AssistantProvider'
@@ -54,6 +54,33 @@ table{border-collapse:collapse;width:100%;margin:12px 0}td,th{border:1px solid #
 </style></head><body>${html}</body></html>`
 }
 
+function ContractDownload({ number, html }: { number: string; html: string }) {
+  const [loading, setLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  async function download() {
+    setLoading(true)
+    setFailed(false)
+    try {
+      const { downloadContractPdf } = await import('./contractPdf')
+      await downloadContractPdf(number, html)
+    } catch {
+      setFailed(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      <Button variant="secondary" size="sm" icon={<Download size={16} />} loading={loading} onClick={() => void download()}>
+        Скачать PDF
+      </Button>
+      {failed && <p role="alert" className={styles.hint}>Не удалось скачать договор. Попробуйте ещё раз.</p>}
+    </div>
+  )
+}
+
 function Terms({ application }: { application: Application }) {
   const offer = application.offer
   const amount = offer?.amount ?? application.amount
@@ -88,7 +115,12 @@ function ContractView({ applicationId }: { applicationId: string }) {
       className={styles.contractCard}
       assist="contract"
       title={contract.data ? `Договор № ${contract.data.number}` : 'Кредитный договор'}
-      actions={<AskButton question="Что я подписываю? Объясни главные условия договора простыми словами." />}
+      actions={
+        <div className={styles.actions}>
+          {contract.data && <ContractDownload number={contract.data.number} html={contract.data.html} />}
+          <AskButton question="Что я подписываю? Объясни главные условия договора простыми словами." />
+        </div>
+      }
     >
       {contract.isPending ? (
         <div className={styles.contractLoading}>

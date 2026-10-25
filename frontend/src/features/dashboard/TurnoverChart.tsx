@@ -69,7 +69,8 @@ export function TurnoverChart({ data }: { data: TurnoverMonth[] }) {
 
   const activeMonth = active !== null ? data[active] : undefined
   const activeX = active !== null ? geometry.x(active) : 0
-  const tooltipLeft = Math.min(Math.max(activeX - 95, 0), Math.max(0, width - 190))
+  const tooltipWidth = Math.min(320, width)
+  const tooltipLeft = Math.min(Math.max(activeX - tooltipWidth / 2, 0), Math.max(0, width - tooltipWidth))
 
   return (
     <div className={styles.root} ref={ref}>
@@ -130,7 +131,7 @@ export function TurnoverChart({ data }: { data: TurnoverMonth[] }) {
       </svg>
 
       {activeMonth && (
-        <div className={styles.tooltip} style={{ left: tooltipLeft }}>
+        <div className={styles.tooltip} style={{ left: tooltipLeft, width: tooltipWidth }}>
           <strong>{formatMonthLong(activeMonth.month)}</strong>
           <span>
             <i className={styles.keyIn} /> Поступления <b className="tabular">{formatMoney(activeMonth.inflow)}</b>

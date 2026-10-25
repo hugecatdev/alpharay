@@ -14,6 +14,8 @@
 | @hookform/resolvers | MIT | связка RHF + zod |
 | lucide-react | ISC | иконки |
 | @fontsource/manrope (шрифт Manrope) | SIL Open Font License 1.1 | шрифт интерфейса |
+| pdfmake, html-to-pdfmake | MIT | формирование PDF кредитного договора |
+| Roboto | Apache-2.0 | шрифт PDF с поддержкой кириллицы |
 
 ## Инструменты разработки и сборки
 

@@ -64,7 +64,7 @@ function Message({ item, onHint }: { item: ChatItem; onHint: (target: string) =>
 }
 
 export function AssistantPanel() {
-  const { open, setOpen, messages, sending, send, suggestions, screen, highlight, reset } = useAssistant()
+  const { open, setOpen, messages, sending, send, suggestions, highlight, reset } = useAssistant()
   const [draft, setDraft] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -107,7 +107,7 @@ export function AssistantPanel() {
         </span>
         <div className={styles.titles}>
           <h3>Рэй</h3>
-          <span title="Рэй видит этот экран и отвечает в его контексте">Ассистент · по экрану «{screen.title}»</span>
+          <span>Ассистент</span>
         </div>
         <div className={styles.topActions}>
           {messages.length > 0 && (
@@ -124,8 +124,7 @@ export function AssistantPanel() {
       <div className={styles.conversation} ref={listRef} aria-live="polite">
         {messages.length === 0 && (
           <p className={styles.welcome}>
-            Объясню термины, расчёты и риски на этом экране. По вашей просьбе подставлю сумму и срок в форму — проверяете и
-            отправляете заявку вы, решение принимает банк.
+            Объясню термины, расчёты и риски на этом экране. Проверяете и отправляете заявку вы, решение принимает банк.
           </p>
         )}
         {messages.map((item) => (

@@ -242,8 +242,12 @@
 }
 
 .suggestions button:not(:disabled):hover,
-.suggestions button:not(:disabled):hover svg {
-  color: var(--red);
+.suggestions button:not(:disabled):hover svg,
+.suggestions button:not(:disabled):focus-visible,
+.suggestions button:not(:disabled):focus-visible svg,
+.suggestions button:not(:disabled):active,
+.suggestions button:not(:disabled):active svg {
+  color: var(--violet);
 }
 
 .suggestions button:disabled {
