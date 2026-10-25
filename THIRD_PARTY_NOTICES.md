@@ -4,18 +4,16 @@
 
 ## Runtime-зависимости
 
-| Компонент | Назначение |
-|---|---|
-| react, react-dom 18 | UI |
-| react-router-dom 6 | роутинг |
-| @tanstack/react-query 5 | серверное состояние, поллинг статусов |
-| react-hook-form 7 | формы |
-| zod 3 | валидация |
-| @hookform/resolvers | связка RHF + zod |
-| lucide-react | иконки |
-| @fontsource/manrope | шрифт интерфейса |
-| pdfmake, html-to-pdfmake | PDF кредитного договора |
-| Roboto | шрифт PDF с кириллицей |
+- react, react-dom 18
+- react-router-dom 6
+- @tanstack/react-query 5
+- react-hook-form 7
+- zod 3
+- @hookform/resolvers
+- lucide-react
+- @fontsource/manrope
+- pdfmake, html-to-pdfmake
+- Roboto
 
 ## Инструменты разработки и сборки
 
