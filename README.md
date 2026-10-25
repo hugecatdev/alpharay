@@ -1,10 +1,7 @@
-# AlphaRay - умный кредитный кабинет
+# Альфа-Будущее Хакатон 2026
+## Умный кредитный кабинет предпринимателя
 
-Репозиторий: https://github.com/hugecatdev/alpharay
-
-Альфа-Будущее Хакатон 2026  
-AlphaRay  
-Трек: Умный кредитный кабинет предпринимателя
+https://github.com/hugecatdev/alpharay 
 
 ## Продуктовые преимущества
 
@@ -53,14 +50,14 @@ AlphaRay
 ![Модель данных](docs/diagrams/data.png)
 
 ЕГРЮЛ, ФНС, БКИ, подписание и выдача смоделированы с синтетическими данных.
-Подробно - [docs/architecture.md](docs/architecture.md).
+[docs/architecture.md](docs/architecture.md).
 
 ## Компоненты
 
 - Бэкенд: Python 3.13, FastAPI, SQLAlchemy, Alembic.
-- База: PostgreSQL 17.6.
+- БД: PostgreSQL 17.6.
 - Фронтенд: React 18, TypeScript, Vite.
-- Запуск: Docker Compose.
+- Docker Compose.
 
 Версии зафиксированы в `backend/poetry.lock` и `frontend/package-lock.json`.
 
